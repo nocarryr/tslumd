@@ -1,0 +1,335 @@
+{
+  "version": 0,
+  "flags": 0,
+  "screen": 0,
+  "displays": [
+    {
+      "index": 1,
+      "text": "IN1",
+      "brightness": 0,
+      "rh_tally": "RED",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 2,
+      "text": "IN2",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "GREEN",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 3,
+      "text": "SDI IN3",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 4,
+      "text": "SDI IN4",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 5,
+      "text": "SDI IN5",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 6,
+      "text": "SDI IN6",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 7,
+      "text": "SDI IN7",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 8,
+      "text": "SDI IN8",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 145,
+      "text": "CBGD1",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 146,
+      "text": "CBGD2",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 147,
+      "text": "CBAR",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 148,
+      "text": "Black",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 149,
+      "text": "Still 1V",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 150,
+      "text": "Still 1K",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 151,
+      "text": "Still 2V",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 152,
+      "text": "Still 2K",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 157,
+      "text": "Clip 1V",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 158,
+      "text": "Clip 1K",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 159,
+      "text": "Clip 2V",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 160,
+      "text": "Clip 2K",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 165,
+      "text": "MV1",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 166,
+      "text": "MV2",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 171,
+      "text": "Key Out",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 172,
+      "text": "CLN",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 201,
+      "text": "PGM",
+      "brightness": 0,
+      "rh_tally": "RED",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 203,
+      "text": "PVW",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "GREEN",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 209,
+      "text": "ME PGM",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 227,
+      "text": "AUX1",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 228,
+      "text": "AUX2",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 229,
+      "text": "AUX3",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 230,
+      "text": "AUX4",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 251,
+      "text": "CLOCK",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 255,
+      "text": "IN-A1",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 256,
+      "text": "IN-A2",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 257,
+      "text": "IN-A3",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 258,
+      "text": "IN-A4",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 259,
+      "text": "IN-B1",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 260,
+      "text": "IN-B2",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 261,
+      "text": "IN-B3",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 262,
+      "text": "IN-B4",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    },
+    {
+      "index": 265,
+      "text": "",
+      "brightness": 0,
+      "rh_tally": "OFF",
+      "txt_tally": "OFF",
+      "lh_tally": "OFF"
+    }
+  ]
+}

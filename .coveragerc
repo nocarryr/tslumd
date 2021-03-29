@@ -1,0 +1,11 @@
+[run]
+source = oscpython
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    return NotImplemented
+    if __name__ == .__main__.:
