@@ -6,6 +6,7 @@ and other production display/control purposes.
 """
 
 from .common import *
+from .tallyobj import *
 from .messages import *
 from .receiver import *
 from .sender import *

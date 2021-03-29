@@ -92,6 +92,16 @@ class Display:
         kw = tally.to_dict()
         return cls(**kw)
 
+    def __eq__(self, other):
+        if not isinstance(other, (Display, Tally)):
+            return NotImplemented
+        return self.to_dict() == other.to_dict()
+
+    def __ne__(self, other):
+        if not isinstance(other, (Display, Tally)):
+            return NotImplemented
+        return self.to_dict() != other.to_dict()
+
 @dataclass
 class Message:
     """A single UMDv5 message packet
