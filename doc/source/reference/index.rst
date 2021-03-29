@@ -11,6 +11,7 @@ Reference
     :maxdepth: 2
 
     common
+    tallyobj
     messages
     receiver
     sender

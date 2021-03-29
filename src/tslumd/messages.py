@@ -87,7 +87,7 @@ class Display:
 
     @classmethod
     def from_tally(cls, tally: Tally) -> 'Display':
-        """Create a :class:`Display` from the given :class:`~.common.Tally`
+        """Create a :class:`Display` from the given :class:`~.Tally`
         """
         kw = tally.to_dict()
         return cls(**kw)

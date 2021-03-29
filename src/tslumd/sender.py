@@ -27,7 +27,7 @@ class UmdSender(Dispatcher):
     """Send UMD Messages
 
     Messages are sent immediately when a change is made to any of the
-    :class:`~.common.Tally` objects in :attr:`tallies`. These can be added by using
+    :class:`~.Tally` objects in :attr:`tallies`. These can be added by using
     the :meth:`add_tally` method.
 
     Alternatively, the :meth:`set_tally_color` and :meth:`set_tally_text` methods
@@ -101,10 +101,10 @@ class UmdSender(Dispatcher):
         logger.success('UmdSender closed')
 
     def add_tally(self, index_: int, **kwargs) -> Tally:
-        """Create a :class:`~.common.Tally` object and add it to :attr:`tallies`
+        """Create a :class:`~.Tally` object and add it to :attr:`tallies`
 
         Arguments:
-            index_: The tally :attr:`~.common.Tally.index`
+            index_: The tally :attr:`~.Tally.index`
             **kwargs: Keyword arguments passed to create the tally instance
 
         Raises:
@@ -122,7 +122,7 @@ class UmdSender(Dispatcher):
         """Set the tally color for the given index and tally type
 
         Arguments:
-            index_: The tally :attr:`~.common.Tally.index`
+            index_: The tally :attr:`~.Tally.index`
             tally_type: A member of :class:`~.common.TallyType` specifying the
                 tally lamp within the display
             color: The member of :class:`~.common.TallyColor` to set
@@ -140,8 +140,8 @@ class UmdSender(Dispatcher):
         """Set the tally text for the given index
 
         Arguments:
-            index_: The tally :attr:`~.common.Tally.index`
-            text: The :attr:`~.common.Tally.text` to set
+            index_: The tally :attr:`~.Tally.index`
+            text: The :attr:`~.Tally.text` to set
         """
         if index_ not in self.tallies:
             tally = self.add_tally(index_)

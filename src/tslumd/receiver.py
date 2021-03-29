@@ -33,19 +33,19 @@ class UmdReceiver(Dispatcher):
     :Events:
         .. on_tally_added(tally: Tally)
 
-            Fired when a :class:`~.common.Tally` instance is added to :attr:`tallies`
+            Fired when a :class:`~.Tally` instance is added to :attr:`tallies`
 
         .. on_tally_updated(tally: Tally)
 
-            Fired when any :class:`~.common.Tally` instance has been updated
+            Fired when any :class:`~.Tally` instance has been updated
     """
 
     DEFAULT_HOST: str = '0.0.0.0' #: The default host address to listen on
     DEFAULT_PORT: int = 65000 #: The default host port to listen on
 
     tallies: Dict[int, Tally]
-    """Mapping of :class:`~.common.Tally` objects using
-    the :attr:`~.common.Tally.index` as keys
+    """Mapping of :class:`~.Tally` objects using
+    the :attr:`~.Tally.index` as keys
     """
 
     running: bool
@@ -137,7 +137,7 @@ class UmdReceiver(Dispatcher):
                 break
 
     def update_display(self, rx_display: Display):
-        """Update or create a :class:`~.common.Tally` from data received
+        """Update or create a :class:`~.Tally` from data received
         by the server
         """
         if rx_display.index not in self.tallies:
