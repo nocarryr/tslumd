@@ -1,4 +1,8 @@
-from loguru import logger
+try:
+    from loguru import logger
+except ImportError: # pragma: no cover
+    import logging
+    logger = logging.getLogger(__name__)
 import asyncio
 from typing import Dict, Tuple, Set, Optional
 
@@ -93,7 +97,7 @@ class UmdReceiver(Dispatcher):
                 reuse_port=True,
             )
             await self.connected_evt.wait()
-            logger.success('UmdReceiver running')
+            logger.info('UmdReceiver running')
 
     async def close(self):
         """Close the server
@@ -105,7 +109,7 @@ class UmdReceiver(Dispatcher):
             self.running = False
             self.transport.close()
             self.connected_evt.clear()
-            logger.success('UmdReceiver closed')
+            logger.info('UmdReceiver closed')
 
     async def set_bind_address(self, hostaddr: str, hostport: int):
         """Set the :attr:`hostaddr` and :attr:`hostport` and restart the server

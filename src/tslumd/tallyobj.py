@@ -1,4 +1,8 @@
-from loguru import logger
+try:
+    from loguru import logger
+except ImportError: # pragma: no cover
+    import logging
+    logger = logging.getLogger(__name__)
 from typing import Dict, Set
 
 from pydispatch import Dispatcher, Property

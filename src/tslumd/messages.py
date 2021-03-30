@@ -1,4 +1,3 @@
-from loguru import logger
 import asyncio
 import dataclasses
 from dataclasses import dataclass, field

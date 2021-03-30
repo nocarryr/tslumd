@@ -1,4 +1,8 @@
-from loguru import logger
+try:
+    from loguru import logger
+except ImportError: # pragma: no cover
+    import logging
+    logger = logging.getLogger(__name__)
 import asyncio
 import socket
 import argparse
@@ -85,7 +89,7 @@ class UmdSender(Dispatcher):
             family=socket.AF_INET,
         )
         self.tx_task = asyncio.create_task(self.tx_loop())
-        logger.success('UmdSender running')
+        logger.info('UmdSender running')
 
     async def close(self):
         """Stop sending to clients and close connections
@@ -98,7 +102,7 @@ class UmdSender(Dispatcher):
         await self.tx_task
         self.tx_task = None
         self.transport.close()
-        logger.success('UmdSender closed')
+        logger.info('UmdSender closed')
 
     def add_tally(self, index_: int, **kwargs) -> Tally:
         """Create a :class:`~.Tally` object and add it to :attr:`tallies`
@@ -154,7 +158,7 @@ class UmdSender(Dispatcher):
             logger.debug(f'tally update: {tally}')
             await self.update_queue.put(tally.index)
 
-    @logger.catch
+    @logger_catch
     async def tx_loop(self):
         async def get_queue_item(timeout):
             try:
