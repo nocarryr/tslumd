@@ -29,3 +29,11 @@ def uhs500_msg_parsed() -> Message:
         displays.append(Display(**disp))
     data['displays'] = displays
     return Message(**data)
+
+@pytest.fixture
+def udp_port0(unused_tcp_port_factory):
+    return unused_tcp_port_factory()
+
+@pytest.fixture
+def udp_port(unused_tcp_port_factory):
+    return unused_tcp_port_factory()
