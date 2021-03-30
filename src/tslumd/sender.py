@@ -24,7 +24,7 @@ class UmdProtocol(asyncio.DatagramProtocol):
         logger.debug(f'transport={transport}')
         self.transport = transport
         self.sender.connected_evt.set()
-    def datagram_received(self, data, addr):
+    def datagram_received(self, data, addr): # pragma: no cover
         pass
 
 class UmdSender(Dispatcher):
