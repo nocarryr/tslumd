@@ -212,6 +212,13 @@ class UmdSender(Dispatcher):
     def _build_message(self) -> Message:
         return Message()
 
+    async def __aenter__(self):
+        await self.open()
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await self.close()
+
 
 class ClientArgAction(argparse._AppendAction):
     _default_help = ' '.join([
