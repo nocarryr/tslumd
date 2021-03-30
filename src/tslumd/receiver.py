@@ -17,14 +17,14 @@ __all__ = ('UmdReceiver',)
 
 
 class UmdProtocol(asyncio.DatagramProtocol):
-    def __init__(self, umd_io: 'UmdReceiver'):
-        self.umd_io = umd_io
+    def __init__(self, receiver: 'UmdReceiver'):
+        self.receiver = receiver
     def connection_made(self, transport):
         logger.debug(f'transport={transport}')
         self.transport = transport
-        self.umd_io.connected_evt.set()
+        self.receiver.connected_evt.set()
     def datagram_received(self, data, addr):
-        self.umd_io.parse_incoming(data, addr)
+        self.receiver.parse_incoming(data, addr)
 
 
 class UmdReceiver(Dispatcher):
