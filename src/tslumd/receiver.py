@@ -18,6 +18,7 @@ class UmdProtocol(asyncio.DatagramProtocol):
     def connection_made(self, transport):
         logger.debug(f'transport={transport}')
         self.transport = transport
+        self.umd_io.connected_evt.set()
     def datagram_received(self, data, addr):
         self.umd_io.parse_incoming(data, addr)
 
@@ -63,6 +64,7 @@ class UmdReceiver(Dispatcher):
         self.loop = asyncio.get_event_loop()
         self.running = False
         self._connect_lock = asyncio.Lock()
+        self.connected_evt = asyncio.Event()
 
     @property
     def hostaddr(self) -> str:
@@ -84,11 +86,13 @@ class UmdReceiver(Dispatcher):
                 return
             logger.debug('UmdReceiver.open()')
             self.running = True
+            self.connected_evt.clear()
             self.transport, self.protocol = await self.loop.create_datagram_endpoint(
                 lambda: UmdProtocol(self),
                 local_addr=(self.hostaddr, self.hostport),
                 reuse_port=True,
             )
+            await self.connected_evt.wait()
             logger.success('UmdReceiver running')
 
     async def close(self):
@@ -100,6 +104,7 @@ class UmdReceiver(Dispatcher):
             logger.debug('UmdReceiver.close()')
             self.running = False
             self.transport.close()
+            self.connected_evt.clear()
             logger.success('UmdReceiver closed')
 
     async def set_bind_address(self, hostaddr: str, hostport: int):
