@@ -115,6 +115,10 @@ class Message:
     scontrol: bytes = b''
     """SCONTROL data (if present).  Not currently implemented"""
 
+    def __post_init__(self):
+        if not isinstance(self.flags, Flags):
+            self.flags = Flags(self.flags)
+
     @classmethod
     def parse(cls, msg: bytes) -> Tuple['Message', bytes]:
         """Parse incoming message data to create a :class:`Message` instance.
