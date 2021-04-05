@@ -36,15 +36,15 @@ class UmdReceiver(Dispatcher):
         hostport (int): The port to listen on. Defaults to :attr:`DEFAULT_PORT`
 
     :Events:
-        .. on_tally_added(tally: Tally)
+        .. event:: on_tally_added(tally: Tally)
 
             Fired when a :class:`~.Tally` instance is added to :attr:`tallies`
 
-        .. on_tally_updated(tally: Tally)
+        .. event:: on_tally_updated(tally: Tally)
 
             Fired when any :class:`~.Tally` instance has been updated
 
-        .. on_scontrol(screen: int, data: bytes)
+        .. event:: on_scontrol(screen: int, data: bytes)
 
             Fired when a message with :attr:`~.Message.scontrol` data is received
 
