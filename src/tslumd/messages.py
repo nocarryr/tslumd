@@ -160,10 +160,13 @@ class Display:
         return dataclasses.asdict(self)
 
     @classmethod
-    def from_tally(cls, tally: Tally) -> 'Display':
+    def from_tally(cls, tally: Tally, msg_type: MessageType = MessageType.display) -> 'Display':
         """Create a :class:`Display` from the given :class:`~.Tally`
         """
         kw = tally.to_dict()
+        if msg_type == MessageType.control:
+            del kw['text']
+        kw['type'] = msg_type
         return cls(**kw)
 
     def __eq__(self, other):

@@ -94,3 +94,75 @@ async def test_with_uhs_data(udp_port):
             for tx_tally in sender.tallies.values():
                 rx_tally = receiver.tallies[tx_tally.index]
                 assert rx_tally == tx_tally
+
+@pytest.mark.asyncio
+async def test_scontrol(faker, udp_port):
+    loop = asyncio.get_event_loop()
+
+    sender = UmdSender(clients=[('127.0.0.1', udp_port)])
+    receiver = UmdReceiver(hostaddr='127.0.0.1', hostport=udp_port)
+
+    evt_listener = EventListener()
+    receiver.bind_async(loop, on_scontrol=evt_listener.callback)
+
+    async with receiver:
+        async with sender:
+            for i in range(100):
+                data_len = faker.pyint(min_value=1, max_value=1024)
+                control_data = faker.binary(length=data_len)
+
+                await sender.send_scontrol(screen=i, data=control_data)
+                evt_args, evt_kwargs = await evt_listener.get()
+
+                rx_screen, rx_data = evt_args
+                assert rx_screen == i
+                assert rx_data == control_data
+
+@pytest.mark.asyncio
+async def test_disp_control(faker, udp_port):
+    loop = asyncio.get_event_loop()
+
+    sender = UmdSender(clients=[('127.0.0.1', udp_port)])
+    receiver = UmdReceiver(hostaddr='127.0.0.1', hostport=udp_port)
+
+    add_listener = EventListener()
+    receiver.bind_async(loop, on_tally_added=add_listener.callback)
+
+    tally_listener = EventListener()
+
+    async with receiver:
+        async with sender:
+            for i in range(100):
+                sender.set_tally_text(i, f'Tally-{i}')
+                tx_tally = sender.tallies[i]
+
+                evt_args, evt_kwargs = await add_listener.get()
+                rx_tally = evt_args[0]
+                assert rx_tally == tx_tally
+
+                rx_tally.bind_async(loop, on_control=tally_listener.callback)
+
+                data_len = faker.pyint(min_value=1, max_value=1024)
+                control_data = faker.binary(length=data_len)
+
+                await sender.send_tally_control(tx_tally.index, control_data)
+                assert tx_tally.control == control_data
+
+                evt_args, evt_kwargs = await tally_listener.get()
+                _rx_tally, rx_data = evt_args
+                assert _rx_tally is rx_tally
+
+                assert rx_data == rx_tally.control == tx_tally.control == control_data
+
+                rx_tally.unbind(tally_listener)
+
+            data_len = faker.pyint(min_value=1, max_value=1024)
+            control_data = faker.binary(length=data_len)
+            await sender.send_tally_control(200, control_data)
+
+            tx_tally = sender.tallies[200]
+
+            evt_args, evt_kwargs = await add_listener.get()
+            rx_tally = evt_args[0]
+            assert rx_tally.control == tx_tally.control == control_data
+            assert rx_tally == tx_tally

@@ -10,7 +10,7 @@ from typing import Dict, Tuple, Set, Optional, Sequence
 
 from pydispatch import Dispatcher, Property, DictProperty, ListProperty
 
-from tslumd import Message, Display, TallyColor, TallyType, Tally
+from tslumd import MessageType, Message, Display, TallyColor, TallyType, Tally
 from tslumd.utils import logger_catch
 
 Client = Tuple[str, int] #: A network client as a tuple of ``(address, port)``
@@ -104,6 +104,16 @@ class UmdSender(Dispatcher):
         self.transport.close()
         logger.info('UmdSender closed')
 
+    async def send_scontrol(self, screen: int, data: bytes):
+        """Send an :attr:`SCONTROL <.Message.scontrol>` message
+
+        Arguments:
+            screen: The :attr:`~.Message.screen` for the message
+            data: The data to send in the :attr:`~.Message.scontrol` field
+        """
+        msg = self._build_message(screen=screen, scontrol=data)
+        await self.send_message(msg)
+
     def add_tally(self, index_: int, **kwargs) -> Tally:
         """Create a :class:`~.Tally` object and add it to :attr:`tallies`
 
@@ -153,8 +163,27 @@ class UmdSender(Dispatcher):
             tally = self.tallies[index_]
         tally.text = text
 
+    async def send_tally_control(self, index_: int, data: bytes):
+        """Send :attr:`~.Display.control` data for the given tally index
+
+        Arguments:
+            index_: The tally :attr:`~.Tally.index`
+            control: The control data to send
+        """
+        if index_ not in self.tallies:
+            tally = self.add_tally(index_)
+        else:
+            tally = self.tallies[index_]
+        tally.control = data
+        msg = self._build_message()
+        disp = Display.from_tally(tally, msg_type=MessageType.control)
+        msg.displays.append(disp)
+        await self.send_message(msg)
+
     async def on_tally_updated(self, tally: Tally, props_changed: Sequence[str], **kwargs):
         if self.running:
+            if set(props_changed) == set(['control']):
+                return
             logger.debug(f'tally update: {tally}')
             await self.update_queue.put(tally.index)
 
@@ -209,8 +238,8 @@ class UmdSender(Dispatcher):
             msg.displays.append(disp)
         await self.send_message(msg)
 
-    def _build_message(self) -> Message:
-        return Message()
+    def _build_message(self, **kwargs) -> Message:
+        return Message(**kwargs)
 
     async def __aenter__(self):
         await self.open()
