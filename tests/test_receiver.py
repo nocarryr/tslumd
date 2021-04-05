@@ -146,3 +146,29 @@ async def test_rebind(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, udp_por
         evt_args, evt_kwargs = await evt_listener.get()
         evt_tally = evt_args[0]
         assert disp == evt_tally
+
+@pytest.mark.asyncio
+async def test_scontrol(faker, udp_endpoint, udp_port):
+    transport, protocol, endpoint_port = udp_endpoint
+    assert udp_port != endpoint_port
+
+    loop = asyncio.get_event_loop()
+
+    receiver = UmdReceiver(hostaddr='127.0.0.1', hostport=udp_port)
+
+    evt_listener = EventListener()
+    receiver.bind_async(loop, on_scontrol=evt_listener.callback)
+
+    async with receiver:
+        for i in range(100):
+            data_len = faker.pyint(min_value=1, max_value=1024)
+            control_data = faker.binary(length=data_len)
+
+            msgobj = Message(screen=i, scontrol=control_data)
+            transport.sendto(msgobj.build_message(), ('127.0.0.1', udp_port))
+
+            args, kwargs = await evt_listener.get()
+
+            screen, rx_data = args
+            assert screen == i
+            assert rx_data == control_data

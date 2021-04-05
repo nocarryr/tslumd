@@ -8,7 +8,7 @@ from typing import Dict, Tuple, Set, Optional
 
 from pydispatch import Dispatcher, Property, DictProperty, ListProperty
 
-from tslumd import Tally, TallyColor, Message, Display
+from tslumd import Tally, TallyColor, MessageType, Message, Display
 from tslumd.utils import logger_catch
 
 __all__ = ('UmdReceiver',)
@@ -43,6 +43,15 @@ class UmdReceiver(Dispatcher):
         .. on_tally_updated(tally: Tally)
 
             Fired when any :class:`~.Tally` instance has been updated
+
+        .. on_scontrol(screen: int, data: bytes)
+
+            Fired when a message with :attr:`~.Message.scontrol` data is received
+
+            * ``screen`` : The :attr:`~.Message.screen` from the incoming
+              control message
+            * ``data`` : The control data
+
     """
 
     DEFAULT_HOST: str = '0.0.0.0' #: The default host address to listen on
@@ -60,7 +69,7 @@ class UmdReceiver(Dispatcher):
     loop: asyncio.BaseEventLoop
     """The :class:`asyncio.BaseEventLoop` associated with the instance"""
 
-    _events_ = ['on_tally_added', 'on_tally_updated']
+    _events_ = ['on_tally_added', 'on_tally_updated', 'on_scontrol']
     def __init__(self, hostaddr: str = DEFAULT_HOST, hostport: int = DEFAULT_PORT):
         self.__hostaddr = hostaddr
         self.__hostport = hostport
@@ -140,8 +149,11 @@ class UmdReceiver(Dispatcher):
         """
         while True:
             message, remaining = Message.parse(data)
-            for display in message.displays:
-                self.update_display(display)
+            if message.type == MessageType.control:
+                self.emit('on_scontrol', message.screen, message.scontrol)
+            else:
+                for display in message.displays:
+                    self.update_display(display)
             if not len(remaining):
                 break
 
