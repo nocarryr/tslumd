@@ -7,7 +7,7 @@ from typing import List, Tuple, Dict
 
 from tslumd import TallyColor, Tally
 
-__all__ = ('Display', 'Message')
+__all__ = ('MessageType', 'Display', 'Message')
 
 class Flags(enum.IntFlag):
     """Message flags
@@ -19,6 +19,13 @@ class Flags(enum.IntFlag):
     SCONTROL = 2
     """Indicates the message contains ``SCONTROL`` data if set, otherwise ``DMESG``
     """
+
+class MessageType(enum.Enum):
+    """Message type
+    """
+    _unset = 0
+    display = 1 #: A message containing tally display information
+    control = 2 #: A message containing control data
 
 @dataclass
 class Display:
@@ -114,9 +121,33 @@ class Message:
     scontrol: bytes = b''
     """SCONTROL data (if present).  Not currently implemented"""
 
+    type: MessageType = MessageType.display
+    """The message type. One of :attr:`~MessageType.display` or
+    :attr:`~MessageType.control`.
+
+    * For :attr:`~MessageType.display` (the default), the contents of
+      :attr:`displays` are used and the :attr:`scontrol` field must be empty.
+    * For :attr:`~MessageType.control`, the :attr:`scontrol` field is used and
+      :attr:`displays` must be empty.
+    """
+
     def __post_init__(self):
         if not isinstance(self.flags, Flags):
             self.flags = Flags(self.flags)
+
+        if len(self.scontrol) and len(self.displays):
+            raise ValueError('SCONTROL message cannot contain displays')
+
+        if len(self.scontrol):
+            self.type = MessageType.control
+
+        if self.type == MessageType.control:
+            self.flags |= Flags.SCONTROL
+        elif self.type == MessageType._unset:
+            if Flags.SCONTROL in self.flags:
+                self.type = MessageType.control
+            else:
+                self.type = MessageType.display
 
     @classmethod
     def parse(cls, msg: bytes) -> Tuple['Message', bytes]:
@@ -130,12 +161,13 @@ class Message:
             version=version,
             flags=Flags(flags),
             screen=screen,
+            type=MessageType._unset,
         )
         msg = msg[2:]
         remaining = msg[byte_count:]
         msg = msg[4:byte_count]
         obj = cls(**kw)
-        if Flags.SCONTROL in obj.flags:
+        if obj.type == MessageType.control:
             obj.scontrol = msg
             return obj, remaining
         while len(msg):
@@ -146,7 +178,7 @@ class Message:
     def build_message(self) -> bytes:
         """Build a message packet from data in this instance
         """
-        if Flags.SCONTROL in self.flags:
+        if self.type == MessageType.control:
             payload = bytearray(self.scontrol)
         else:
             payload = bytearray()

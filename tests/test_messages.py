@@ -1,6 +1,7 @@
 import pytest
 
-from tslumd import TallyColor, Message, Display
+from tslumd import TallyColor, Message, Display, MessageType
+from tslumd.messages import Flags
 
 
 def test_uhs_message(uhs500_msg_bytes, uhs500_msg_parsed):
@@ -38,3 +39,26 @@ def test_messages():
         assert getattr(msgobj, attr) == getattr(parsed, attr)
 
     assert msgobj == parsed
+
+def test_scontrol(faker):
+    for _ in range(100):
+        data_len = faker.pyint(min_value=1, max_value=1024)
+        control_data = faker.binary(length=data_len)
+
+        msgobj = Message(scontrol=control_data)
+        assert msgobj.type == MessageType.control
+        assert Flags.SCONTROL in msgobj.flags
+
+        msg_bytes = msgobj.build_message()
+        parsed, remaining = Message.parse(msg_bytes)
+        assert not len(remaining)
+
+        assert parsed.type == MessageType.control
+        assert parsed.scontrol == control_data
+        assert parsed == msgobj
+
+        disp = Display(index=1)
+
+        with pytest.raises(ValueError) as excinfo:
+            disp_msg = Message(displays=[disp], scontrol=control_data)
+        assert 'SCONTROL' in str(excinfo.value)
