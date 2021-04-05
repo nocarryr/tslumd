@@ -170,10 +170,19 @@ class Display:
         if not isinstance(other, (Display, Tally)):
             return NotImplemented
         self_dict = self.to_dict()
-        if isinstance(other, Tally):
+        oth_dict = other.to_dict()
+        if isinstance(other, Display):
+            return self_dict == oth_dict
+
+        del self_dict['type']
+        if self.type == MessageType.control:
+            del self_dict['text']
+            del oth_dict['text']
+        else:
             del self_dict['control']
-            del self_dict['type']
-        return self_dict == other.to_dict()
+            del oth_dict['control']
+
+        return self_dict == oth_dict
 
     def __ne__(self, other):
         if not isinstance(other, (Display, Tally)):

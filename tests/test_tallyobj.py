@@ -37,20 +37,19 @@ def test_tally_display_conversion(faker):
                 assert disp == Tally.from_display(disp) == tally
                 assert disp == Display.from_tally(tally) == tally
 
+class Listener:
+    def __init__(self):
+        self.results = asyncio.Queue()
+    async def get(self):
+        r = await self.results.get()
+        self.results.task_done()
+        return r
+    async def callback(self, *args, **kwargs):
+        # print(f'callback: {tally=}, {props_changed=}')
+        await self.results.put(tuple(args))
+
 @pytest.mark.asyncio
 async def test_update_event(faker):
-    class Listener:
-        def __init__(self):
-            self.results = asyncio.Queue()
-        async def get(self):
-            r = await self.results.get()
-            self.results.task_done()
-            return r
-        async def callback(self, tally, props_changed, **kwargs):
-            # print(f'callback: {tally=}, {props_changed=}')
-            await self.results.put((tally, props_changed))
-
-
     loop = asyncio.get_event_loop()
     listener = Listener()
 
@@ -87,3 +86,68 @@ async def test_update_event(faker):
         else:
             await asyncio.sleep(.01)
             assert listener.results.empty()
+
+@pytest.mark.asyncio
+async def test_control_event(faker):
+    loop = asyncio.get_event_loop()
+    listener = Listener()
+
+    disp = Display(index=0)
+    tally = Tally.from_display(disp)
+
+    tally.bind_async(loop, on_control=listener.callback)
+
+    for _ in range(100):
+        data_len = faker.pyint(min_value=1, max_value=1024)
+        control_data = faker.binary(length=data_len)
+
+        disp = Display(index=0, control=control_data)
+        tally.update_from_display(disp)
+
+        _, rx_data = await listener.get()
+        assert rx_data == tally.control == disp.control == control_data
+        assert disp == tally == Tally.from_display(disp)
+
+@pytest.mark.asyncio
+async def test_control_event_with_text(faker):
+    loop = asyncio.get_event_loop()
+
+    text_listener = Listener()
+    ctrl_listener = Listener()
+
+    tally_text = 'foo'
+
+    disp = Display(index=0, text=tally_text)
+    tally = Tally.from_display(disp)
+
+    assert disp == tally
+
+    tally.bind_async(loop,
+        on_update=text_listener.callback,
+        on_control=ctrl_listener.callback,
+    )
+
+    for _ in range(100):
+        for word in faker.words(3):
+            data_len = faker.pyint(min_value=1, max_value=1024)
+            control_data = faker.binary(length=data_len)
+
+            disp = Display(index=0, control=control_data)
+            tally.update_from_display(disp)
+
+            _, rx_data = await ctrl_listener.get()
+            assert rx_data == tally.control == disp.control == control_data
+            assert tally.text == tally_text
+
+            _, props_changed = await text_listener.get()
+            assert set(props_changed) == set(['control'])
+
+            tally_text=word
+            disp = Display(index=0, text=tally_text)
+            tally.update_from_display(disp)
+
+            _, props_changed = await text_listener.get()
+            assert set(props_changed) == set(['text'])
+
+            assert tally.text == tally_text
+            assert tally.control == control_data

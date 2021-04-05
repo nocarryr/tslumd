@@ -20,11 +20,16 @@ class Tally(Dispatcher):
         lh_tally (TallyColor): State of the "left-hand" tally indicator
         brightness (int): Tally indicator brightness from 0 to 3
         text (str): Text to display
+        control (bytes): Any control data received for the tally indicator
 
     :Events:
         .. event:: on_update(instance: Tally, props_changed: Sequence[str])
 
             Fired when any property changes
+
+        .. event:: on_control(instance: Tally, data: bytes)
+
+            Fired when control data is received for the tally indicator
 
     """
     rh_tally = Property(TallyColor.OFF)
@@ -32,8 +37,9 @@ class Tally(Dispatcher):
     lh_tally = Property(TallyColor.OFF)
     brightness = Property(3)
     text = Property('')
-    _events_ = ['on_update']
-    _prop_attrs = ('rh_tally', 'txt_tally', 'lh_tally', 'brightness', 'text')
+    control = Property(b'')
+    _events_ = ['on_update', 'on_control']
+    _prop_attrs = ('rh_tally', 'txt_tally', 'lh_tally', 'brightness', 'text', 'control')
     def __init__(self, index_, **kwargs):
         self.__index = index_
         self._updating_props = False
@@ -50,6 +56,11 @@ class Tally(Dispatcher):
     def from_display(cls, display: 'tslumd.Display') -> 'Tally':
         """Create an instance from the given :class:`~.messages.Display` object
         """
+        attrs = set(cls._prop_attrs)
+        if display.type.name == 'control':
+            attrs.discard('text')
+        else:
+            attrs.discard('control')
         kw = {attr:getattr(display, attr) for attr in cls._prop_attrs}
         return cls(display.index, **kw)
 
@@ -84,9 +95,18 @@ class Tally(Dispatcher):
         Returns:
             set: The property names, if any, that changed
         """
-        kw = {attr:getattr(display, attr) for attr in self._prop_attrs}
+        attrs = set(self._prop_attrs)
+        is_control = display.type.name == 'control'
+        if is_control:
+            attrs.discard('text')
+        else:
+            attrs.discard('control')
+        kw = {attr:getattr(display, attr) for attr in attrs}
         kw['LOG_UPDATED'] = True
-        return self.update(**kw)
+        props_changed = self.update(**kw)
+        if is_control:
+            self.emit('on_control', self, display.control)
+        return props_changed
 
     def to_dict(self) -> Dict:
         """Serialize to a :class:`dict`
