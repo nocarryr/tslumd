@@ -37,6 +37,25 @@ class Display:
     lh_tally: TallyColor = TallyColor.OFF #: Left hand tally indicator
     brightness: int = 3 #: Display brightness (from 0 to 3)
     text: str = '' #: Text to display
+    control: bytes = b''
+    """Control data (if :attr:`type` is :attr:`~MessageType.control`)"""
+
+    type: MessageType = MessageType.display
+    """The message type. One of :attr:`~MessageType.display` or
+    :attr:`~MessageType.control`.
+
+    * For :attr:`~MessageType.display` (the default), the message contains
+      :attr:`text` information and the :attr:`control` field must be empty.
+    * For :attr:`~MessageType.control`, the message contains :attr:`control`
+      data and the :attr:`text` field must be empty
+    """
+
+    def __post_init__(self):
+        if len(self.control):
+            self.type = MessageType.control
+        if self.type == MessageType.control and len(self.text):
+            raise ValueError('Control message cannot contain text')
+
     @classmethod
     def from_dmsg(cls, flags: Flags, dmsg: bytes) -> Tuple['Display', bytes]:
         """Construct an instance from a ``DMSG`` portion of received message.
@@ -56,7 +75,9 @@ class Display:
         )
         is_control_data = ctrl & 0x8000 == 0x8000
         if is_control_data:
-            raise ValueError('Control data undefined for UMDv5.0')
+            ctrl, dmsg = cls._unpack_control_data(dmsg)
+            kw['control'] = ctrl
+            kw['type'] = MessageType.control
         else:
             txt_byte_len = struct.unpack('<H', dmsg[:2])[0]
             dmsg = dmsg[2:]
@@ -71,6 +92,48 @@ class Display:
             kw['text'] = txt
         return cls(**kw), dmsg
 
+    @staticmethod
+    def _unpack_control_data(data: bytes) -> bytes:
+        """Unpack control data (if control bit 15 is set)
+
+        Arguments:
+            data: The portion of the ``dmsg`` at the start of the
+                "Control Data" field
+
+        Returns:
+            bytes: remaining
+                The remaining message data after the control data field
+
+        Note:
+            This is undefined as of UMDv5.0 and its implementation is
+            the author's "best guess" based off of other areas of the protocol
+
+        :meta public:
+        """
+        length = struct.unpack('<H', data[:2])[0]
+        data = data[2:]
+        return data[:length], data[length:]
+
+    @staticmethod
+    def _pack_control_data(data: bytes) -> bytes:
+        """Pack control data (if control bit 15 is set)
+
+        Arguments:
+            data: The control data to pack
+
+        Returns:
+            bytes: packed
+                The packed control data
+
+        Note:
+            This is undefined as of UMDv5.0 and its implementation is
+            the author's "best guess" based off of other areas of the protocol
+
+        :meta public:
+        """
+        length = len(data)
+        return struct.pack(f'<H{length}s', length, data)
+
     def to_dmsg(self, flags: Flags) -> bytes:
         """Build ``dmsg`` bytes to be included in a message
         (called from :meth:`Message.build_message`)
@@ -79,13 +142,18 @@ class Display:
         ctrl += (self.txt_tally & 0b11) << 2
         ctrl += (self.lh_tally & 0b11) << 4
         ctrl += (self.brightness & 0b11) << 6
-        if Flags.UTF16 in flags:
-            txt_bytes = bytes(self.text, 'UTF16-le')
+        if self.type == MessageType.control:
+            ctrl |= 0x8000
+            data = bytearray(struct.pack('<2H', self.index, ctrl))
+            data.extend(self._pack_control_data(self.control))
         else:
-            txt_bytes = bytes(self.text, 'UTF-8')
-        txt_byte_len = len(txt_bytes)
-        data = bytearray(struct.pack('<3H', self.index, ctrl, txt_byte_len))
-        data.extend(txt_bytes)
+            if Flags.UTF16 in flags:
+                txt_bytes = bytes(self.text, 'UTF16-le')
+            else:
+                txt_bytes = bytes(self.text, 'UTF-8')
+            txt_byte_len = len(txt_bytes)
+            data = bytearray(struct.pack('<3H', self.index, ctrl, txt_byte_len))
+            data.extend(txt_bytes)
         return data
 
     def to_dict(self) -> Dict:
@@ -101,12 +169,16 @@ class Display:
     def __eq__(self, other):
         if not isinstance(other, (Display, Tally)):
             return NotImplemented
-        return self.to_dict() == other.to_dict()
+        self_dict = self.to_dict()
+        if isinstance(other, Tally):
+            del self_dict['control']
+            del self_dict['type']
+        return self_dict == other.to_dict()
 
     def __ne__(self, other):
         if not isinstance(other, (Display, Tally)):
             return NotImplemented
-        return self.to_dict() != other.to_dict()
+        return not self.__eq__(other)
 
 @dataclass
 class Message:

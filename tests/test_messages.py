@@ -62,3 +62,49 @@ def test_scontrol(faker):
         with pytest.raises(ValueError) as excinfo:
             disp_msg = Message(displays=[disp], scontrol=control_data)
         assert 'SCONTROL' in str(excinfo.value)
+
+def test_dmsg_control(uhs500_msg_parsed, faker):
+    tested_zero = False
+    for _ in range(10):
+        msgobj = Message(version=1, screen=5)
+        for orig_disp in uhs500_msg_parsed.displays:
+            if not tested_zero:
+                data_len = 0
+                tested_zero = True
+            else:
+                data_len = faker.pyint(min_value=0, max_value=1024)
+            control_data = faker.binary(length=data_len)
+
+            kw = orig_disp.to_dict()
+            del kw['text']
+            kw['control'] = control_data
+            if not len(control_data):
+                kw['type'] = MessageType.control
+            disp = Display(**kw)
+
+            assert disp.type == MessageType.control
+
+            disp_bytes = disp.to_dmsg(msgobj.flags)
+            parsed_disp, remaining = Display.from_dmsg(msgobj.flags, disp_bytes)
+
+            assert not len(remaining)
+            assert parsed_disp.control == control_data
+            assert parsed_disp == disp
+
+            msgobj.displays.append(disp)
+
+        msg_bytes = msgobj.build_message()
+        parsed, remaining = Message.parse(msg_bytes)
+
+        assert not len(remaining)
+        assert parsed == msgobj
+
+        with pytest.raises(ValueError) as excinfo:
+            disp = Display(index=1, control=b'foo', text='foo')
+        excstr = str(excinfo.value).lower()
+        assert 'control' in excstr and 'text' in excstr
+
+        with pytest.raises(ValueError) as excinfo:
+            disp = Display(index=1, text='foo', type=MessageType.control)
+        excstr = str(excinfo.value).lower()
+        assert 'control' in excstr and 'text' in excstr
