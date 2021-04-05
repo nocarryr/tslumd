@@ -200,7 +200,7 @@ class Message:
     """A list of :class:`Display` instances"""
 
     scontrol: bytes = b''
-    """SCONTROL data (if present).  Not currently implemented"""
+    """SCONTROL data (if :attr:`type` is :attr:`~MessageType.control`)"""
 
     type: MessageType = MessageType.display
     """The message type. One of :attr:`~MessageType.display` or
