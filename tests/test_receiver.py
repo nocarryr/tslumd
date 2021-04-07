@@ -2,6 +2,7 @@ import asyncio
 import pytest
 
 from tslumd import TallyType, TallyColor, Message, Display, Tally, UmdReceiver
+from tslumd.messages import ParseError
 
 class EventListener:
     def __init__(self):
@@ -172,3 +173,47 @@ async def test_scontrol(faker, udp_endpoint, udp_port):
             screen, rx_data = args
             assert screen == i
             assert rx_data == control_data
+
+
+@pytest.mark.asyncio
+async def test_parse_errors(faker, udp_endpoint, udp_port):
+    transport, protocol, endpoint_port = udp_endpoint
+    assert udp_port != endpoint_port
+
+    loop = asyncio.get_event_loop()
+
+    receiver = UmdReceiver(hostaddr='127.0.0.1', hostport=udp_port)
+
+    evt_listener = EventListener()
+    receiver.bind_async(loop, on_tally_added=evt_listener.callback)
+
+    msgobj = Message()
+    disp = Display(index=0, text='foo')
+    msgobj.displays.append(disp)
+
+    async with receiver:
+        transport.sendto(msgobj.build_message(), ('127.0.0.1', udp_port))
+
+        _ = await evt_listener.get()
+
+        receiver.unbind(evt_listener)
+        receiver.bind_async(loop, on_tally_updated=evt_listener.callback)
+
+        rx_disp = receiver.tallies[disp.index]
+        assert rx_disp == disp
+
+        for i in range(100):
+            num_bytes = faker.pyint(min_value=1, max_value=1024)
+            bad_bytes = faker.binary(length=num_bytes)
+
+            with pytest.raises(ParseError):
+                receiver.parse_incoming(bad_bytes, ('127.0.0.1', endpoint_port))
+
+            transport.sendto(bad_bytes, ('127.0.0.1', udp_port))
+
+            disp.text = f'foo_{i}'
+            transport.sendto(msgobj.build_message(), ('127.0.0.1', udp_port))
+
+            _ = await evt_listener.get()
+
+            assert rx_disp == disp

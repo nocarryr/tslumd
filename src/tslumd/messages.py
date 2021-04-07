@@ -7,7 +7,38 @@ from typing import List, Tuple, Dict
 
 from tslumd import TallyColor, Tally
 
-__all__ = ('MessageType', 'Display', 'Message')
+__all__ = (
+    'MessageType', 'Display', 'Message', 'ParseError', 'MessageParseError',
+    'DmsgParseError', 'DmsgControlParseError',
+)
+
+
+class ParseError(Exception):
+    """Raised on errors during message parsing
+    """
+    msg: str #: Error message
+    value: bytes #: The relevant message bytes containing the error
+    def __init__(self, msg: str, value: bytes):
+        self.msg = msg
+        self.value = value
+    def __str__(self):
+        return f'{self.msg}: "{self.value!r}"'
+
+class MessageParseError(ParseError):
+    """Raised on errors while parsing :class:`Message` objects
+    """
+    pass
+
+class DmsgParseError(ParseError):
+    """Raised on errors while parsing :class:`Display` objects
+    """
+    pass
+
+class DmsgControlParseError(ParseError):
+    """Raised on errors when parsing :attr:`Display.control` data
+    """
+    pass
+
 
 class Flags(enum.IntFlag):
     """Message flags
@@ -63,6 +94,8 @@ class Display:
         Any remaining message data after the relevant ``DMSG`` is returned along
         with the instance.
         """
+        if len(dmsg) < 4:
+            raise DmsgParseError('Invalid dmsg length', dmsg)
         hdr = struct.unpack('<2H', dmsg[:4])
         dmsg = dmsg[4:]
         ctrl = hdr[1]
@@ -79,10 +112,17 @@ class Display:
             kw['control'] = ctrl
             kw['type'] = MessageType.control
         else:
+            if len(dmsg) < 2:
+                raise DmsgParseError('Invalid text length field', dmsg)
             txt_byte_len = struct.unpack('<H', dmsg[:2])[0]
             dmsg = dmsg[2:]
             txt_bytes = dmsg[:txt_byte_len]
             dmsg = dmsg[txt_byte_len:]
+            if len(txt_bytes) != txt_byte_len:
+                raise DmsgParseError(
+                    f'Invalid text bytes. Expected {txt_byte_len}',
+                    txt_bytes,
+                )
             if Flags.UTF16 in flags:
                 txt = txt_bytes.decode('UTF-16le')
             else:
@@ -110,8 +150,12 @@ class Display:
 
         :meta public:
         """
+        if len(data) < 2:
+            raise DmsgControlParseError('Unknown control data format', data)
         length = struct.unpack('<H', data[:2])[0]
         data = data[2:]
+        if len(data) < length:
+            raise DmsgControlParseError('Unknown control data format', data)
         return data[:length], data[length:]
 
     @staticmethod
@@ -239,6 +283,8 @@ class Message:
 
         Any remaining message data after parsing is returned along with the instance.
         """
+        if len(msg) < 6:
+            raise MessageParseError('Invalid header length', msg)
         data = struct.unpack('<HBBH', msg[:6])
         byte_count, version, flags, screen = data
         kw = dict(
@@ -248,6 +294,11 @@ class Message:
             type=MessageType._unset,
         )
         msg = msg[2:]
+        if len(msg) < byte_count:
+            raise MessageParseError(
+                f'Invalid byte count. Expected {byte_count}, got {len(msg)}',
+                msg,
+            )
         remaining = msg[byte_count:]
         msg = msg[4:byte_count]
         obj = cls(**kw)

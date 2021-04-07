@@ -9,7 +9,6 @@ from typing import Dict, Tuple, Set, Optional
 from pydispatch import Dispatcher, Property, DictProperty, ListProperty
 
 from tslumd import Tally, TallyColor, MessageType, Message, Display
-from tslumd.utils import logger_catch
 
 __all__ = ('UmdReceiver',)
 
@@ -143,7 +142,6 @@ class UmdReceiver(Dispatcher):
         """
         await self.set_bind_address(self.hostaddr, hostport)
 
-    @logger_catch
     def parse_incoming(self, data: bytes, addr: Tuple[str, int]):
         """Parse data received by the server
         """

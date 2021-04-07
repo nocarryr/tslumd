@@ -1,7 +1,11 @@
+import struct
 import pytest
 
 from tslumd import TallyColor, Message, Display, MessageType
-from tslumd.messages import Flags
+from tslumd.messages import (
+    Flags, ParseError, DmsgParseError,
+    DmsgControlParseError, MessageParseError,
+)
 
 
 def test_uhs_message(uhs500_msg_bytes, uhs500_msg_parsed):
@@ -108,3 +112,74 @@ def test_dmsg_control(uhs500_msg_parsed, faker):
             disp = Display(index=1, text='foo', type=MessageType.control)
         excstr = str(excinfo.value).lower()
         assert 'control' in excstr and 'text' in excstr
+
+def test_invalid_message(uhs500_msg_bytes, faker):
+    bad_bytes = faker.binary(length=5)
+    with pytest.raises(MessageParseError) as excinfo:
+        r = Message.parse(bad_bytes)
+    assert 'header' in str(excinfo.value).lower()
+
+    bad_bytes = bytearray(uhs500_msg_bytes)
+    bad_byte_count = struct.pack('<H', len(uhs500_msg_bytes) + 10)
+    bad_bytes[:2] = bad_byte_count
+    bad_bytes = bytes(bad_bytes)
+    with pytest.raises(MessageParseError) as excinfo:
+        r = Message.parse(bad_bytes)
+    assert 'byte count' in str(excinfo.value).lower()
+
+def test_invalid_dmsg(uhs500_msg_bytes, faker):
+
+    # Clip the dmsg header fields
+    bad_bytes = bytearray(uhs500_msg_bytes[:8])
+
+    # Insert the correct value for `PBC` field so it gets past initial checks
+    bad_byte_count = struct.pack('<H', len(bad_bytes) - 2)
+    bad_bytes[:2] = bad_byte_count
+    bad_bytes = bytes(bad_bytes)
+    with pytest.raises(DmsgParseError) as excinfo:
+        r = Message.parse(bad_bytes)
+    assert 'dmsg length' in str(excinfo.value).lower()
+
+    # Clip the display text length field to the wrong size
+    bad_bytes = bytearray(uhs500_msg_bytes[:10])
+
+    # Insert the correct value for `PBC` field so it gets past initial checks
+    bad_byte_count = struct.pack('<H', len(bad_bytes) - 2)
+    bad_bytes[:2] = bad_byte_count
+    bad_bytes = bytes(bad_bytes)
+    with pytest.raises(DmsgParseError) as excinfo:
+        r = Message.parse(bad_bytes)
+    assert 'text length' in str(excinfo.value).lower()
+
+    # Insert an incorrect value for the text length field
+    bad_bytes = bytearray(uhs500_msg_bytes)
+    txt_len_bytes = struct.pack('<H', len(uhs500_msg_bytes) + 10)
+    bad_bytes[10:12] = txt_len_bytes
+    bad_bytes = bytes(bad_bytes)
+    with pytest.raises(DmsgParseError) as excinfo:
+        r = Message.parse(bad_bytes)
+    assert 'invalid text bytes' in str(excinfo.value).lower()
+
+def test_invalid_dmsg_control(uhs500_msg_bytes, faker):
+    msg = Message()
+    disp = Display(index=1, control=b'foo\x00')
+    msg.displays.append(disp)
+    msg_bytes = msg.build_message()
+
+    # Clip the length field to the wrong size
+    bad_bytes = bytearray(msg_bytes)
+    bad_bytes = bad_bytes[:-5]
+    bad_byte_count = struct.pack('<H', len(bad_bytes) - 2)
+    bad_bytes[:2] = bad_byte_count
+    bad_bytes = bytes(bad_bytes)
+    with pytest.raises(DmsgControlParseError):
+        r = Message.parse(bad_bytes)
+
+    # Clip the control bytes to the wrong length
+    bad_bytes = bytearray(msg_bytes)
+    bad_bytes = bad_bytes[:-2]
+    bad_byte_count = struct.pack('<H', len(bad_bytes) - 2)
+    bad_bytes[:2] = bad_byte_count
+    bad_bytes = bytes(bad_bytes)
+    with pytest.raises(DmsgControlParseError):
+        r = Message.parse(bad_bytes)
