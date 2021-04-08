@@ -49,9 +49,9 @@ class TallyTypeGroup:
 
 class AnimatedSender(UmdSender):
     tally_groups: Dict[TallyType, TallyTypeGroup]
-    num_tallies = 8
-    update_interval = 1
-    def __init__(self, clients=None):
+    def __init__(self, clients=None, num_tallies=8, update_interval=.5):
+        self.num_tallies = num_tallies
+        self.update_interval = update_interval
         super().__init__(clients)
         for i in range(self.num_tallies):
             self.add_tally(i, text=string.ascii_uppercase[i])
@@ -172,14 +172,20 @@ class AnimatedSender(UmdSender):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument(
-        '-c', '--client', dest='clients', action=ClientArgAction#, type=str,
+        '-c', '--client', dest='clients', action=ClientArgAction,
+    )
+    p.add_argument(
+        '-n', '--num-tallies', dest='num_tallies', type=int, default=8,
+    )
+    p.add_argument(
+        '-i', '--interval', dest='update_interval', type=float, default=.5,
     )
     args = p.parse_args()
 
     logger.info(f'Sending to clients: {args.clients!r}')
 
     loop = asyncio.get_event_loop()
-    sender = AnimatedSender(clients=args.clients)
+    sender = AnimatedSender(**vars(args))
 
     # async def run():
     #     await sender.open()
