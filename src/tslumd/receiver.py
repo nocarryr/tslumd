@@ -158,7 +158,17 @@ class UmdReceiver(Dispatcher):
     def update_display(self, rx_display: Display):
         """Update or create a :class:`~.Tally` from data received
         by the server
+
+        If data received is a :attr:`broadcast <.messages.Display.is_broadcast>`
+        display, all existing :attr:`tallies` are updated
         """
+        if rx_display.is_broadcast:
+            for tally in self.tallies.values():
+                changed = tally.update_from_display(rx_display)
+                if changed:
+                    self.emit('on_tally_updated', tally)
+            return
+
         if rx_display.index not in self.tallies:
             tally = Tally.from_display(rx_display)
             self.tallies[rx_display.index] = tally

@@ -95,6 +95,61 @@ async def test_with_uhs_data(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, 
             assert disp == tally
 
 @pytest.mark.asyncio
+async def test_broadcast_display(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, udp_port, faker):
+    transport, protocol, endpoint_port = udp_endpoint
+    assert udp_port != endpoint_port
+
+    loop = asyncio.get_event_loop()
+
+    receiver = UmdReceiver(hostaddr='127.0.0.1', hostport=udp_port)
+
+    evt_listener = EventListener()
+    receiver.bind_async(loop, on_tally_added=evt_listener.callback)
+
+    displays_by_index = {disp.index: disp for disp in uhs500_msg_parsed.displays}
+
+    async with receiver:
+        # Populate the receiver's tallies and wait for them to be added
+        transport.sendto(uhs500_msg_bytes, ('127.0.0.1', udp_port))
+        _ = await evt_listener.get()
+        while not evt_listener.empty():
+            _ = await evt_listener.get()
+
+        assert len(receiver.tallies) == len(uhs500_msg_parsed.displays)
+
+        receiver.unbind(evt_listener)
+        receiver.bind_async(loop, on_tally_updated=evt_listener.callback)
+
+
+        # Send a broadcast display message for each TallyColor with a random brightness
+        # The control field is set so the Tally text field is unchanged
+        for color in TallyColor:
+            brightness = faker.pyint(max_value=3)
+            bc_disp = Display.broadcast(
+                control=b'foo', rh_tally=color, lh_tally=color, txt_tally=color,
+                brightness=brightness,
+            )
+            msg = Message(displays=[bc_disp])
+            transport.sendto(msg.build_message(), ('127.0.0.1', udp_port))
+
+            _ = await evt_listener.get()
+            while not evt_listener.empty():
+                _ = await evt_listener.get()
+
+            # Check each of the receiver's tallies against the bc_disp values
+            # and make sure the text didn't change
+            for tally in receiver.tallies.values():
+                assert tally.index < 0xffff
+                assert not tally.is_broadcast
+                assert tally.rh_tally == color
+                assert tally.txt_tally == color
+                assert tally.lh_tally == color
+                assert tally.control == bc_disp.control
+                assert tally.brightness == brightness
+                assert tally.text == displays_by_index[tally.index].text
+
+
+@pytest.mark.asyncio
 async def test_rebind(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, udp_port, unused_tcp_port_factory):
     transport, protocol, endpoint_port = udp_endpoint
     assert udp_port != endpoint_port
