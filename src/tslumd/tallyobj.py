@@ -21,6 +21,8 @@ class Tally(Dispatcher):
         brightness (int): Tally indicator brightness from 0 to 3
         text (str): Text to display
         control (bytes): Any control data received for the tally indicator
+        normalized_brightness (float): The :attr:`brightness` value normalized
+            as a float from ``0.0`` to ``1.0``
 
     :Events:
         .. event:: on_update(instance: Tally, props_changed: Sequence[str])
@@ -36,6 +38,7 @@ class Tally(Dispatcher):
     txt_tally = Property(TallyColor.OFF)
     lh_tally = Property(TallyColor.OFF)
     brightness = Property(3)
+    normalized_brightness = Property(1.)
     text = Property('')
     control = Property(b'')
     _events_ = ['on_update', 'on_control']
@@ -80,7 +83,9 @@ class Tally(Dispatcher):
             if getattr(self, attr) == val:
                 continue
             props_changed.add(attr)
-            setattr(self, attr, kwargs[attr])
+            setattr(self, attr, val)
+            if attr == 'brightness':
+                self.normalized_brightness = (val + 1) / 4
             if log_updated:
                 logger.debug(f'{self!r}.{attr} = {val!r}')
         self._updating_props = False
@@ -125,6 +130,8 @@ class Tally(Dispatcher):
         if self._updating_props:
             return
         prop = kwargs['property']
+        if prop.name == 'brightness':
+            self.normalized_brightness = (value + 1) / 4
         self.emit('on_update', self, [prop.name])
 
     def __eq__(self, other):

@@ -26,7 +26,12 @@ def test_tally_display_conversion(faker):
         disp = Display(index=i)
         tally = Tally(i)
         for tally_type, color in iter_tally_types_and_colors():
+            brightness = faker.pyint(max_value=3)
             # print(f'{i=}, {tally_type=}, {color=}')
+            disp.brightness = brightness
+            tally.brightness = brightness
+            assert 0 <= tally.normalized_brightness <= 1
+            assert tally.normalized_brightness == (brightness + 1) / 4
             setattr(tally, tally_type.name, color)
             setattr(disp, tally_type.name, color)
             for word in faker.words(3):
@@ -36,6 +41,7 @@ def test_tally_display_conversion(faker):
 
                 assert disp == Tally.from_display(disp) == tally
                 assert disp == Display.from_tally(tally) == tally
+                assert Tally.from_display(disp).normalized_brightness == tally.normalized_brightness
 
 class Listener:
     def __init__(self):
