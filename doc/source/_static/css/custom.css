@@ -1,0 +1,4 @@
+.rst-content code.docutils.literal.notranslate:not(.xref) {
+    color: #404040;
+    font-weight: normal;
+}
