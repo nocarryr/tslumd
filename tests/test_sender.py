@@ -96,6 +96,104 @@ async def test_with_uhs_data(udp_port):
                 assert rx_tally == tx_tally
 
 @pytest.mark.asyncio
+async def test_broadcast_display(udp_port):
+    loop = asyncio.get_event_loop()
+
+    sender = UmdSender(clients=[('127.0.0.1', udp_port)])
+    receiver = UmdReceiver(hostaddr='127.0.0.1', hostport=udp_port)
+
+    evt_listener = EventListener()
+    receiver.bind_async(loop, on_tally_added=evt_listener.callback)
+
+    async def wait_for_receiver():
+        _ = await evt_listener.get()
+        while not evt_listener.empty():
+            _ = await evt_listener.get()
+
+        await asyncio.sleep(sender.tx_interval)
+        assert evt_listener.empty()
+
+    color_kw = {attr:TallyColor.RED for attr in ['rh_tally', 'txt_tally', 'lh_tally']}
+
+    async with receiver:
+        async with sender:
+            # Create initial tallies
+            for i in range(10):
+                tx_tally = sender.add_tally(i, **color_kw)
+                tx_tally.text = f'Tally-{i}'
+
+                evt_args, evt_kwargs = await evt_listener.get()
+                rx_tally = evt_args[0]
+                assert rx_tally == tx_tally
+
+            # Connect to ``on_tally_updated`` events
+            receiver.unbind(evt_listener)
+            receiver.bind_async(loop, on_tally_updated=evt_listener.callback)
+
+            # Send a broadcast tally for each color setting all TallyType's to it
+            for color in TallyColor:
+                color_kw = {k:color for k in color_kw.keys()}
+                await sender.send_broadcast_tally(**color_kw)
+                await wait_for_receiver()
+
+                # Check the tally colors and make sure the text values remained
+                for rx_tally in receiver.tallies.values():
+                    tx_tally = sender.tallies[rx_tally.index]
+                    assert rx_tally.text == tx_tally.text == f'Tally-{rx_tally.index}'
+                    assert rx_tally.rh_tally == tx_tally.rh_tally == color
+                    assert rx_tally.txt_tally == tx_tally.txt_tally == color
+                    assert rx_tally.lh_tally == tx_tally.lh_tally == color
+
+
+            # Broadcast all colors to "OFF" and set all names to 'foo'
+            color_kw = {k:TallyColor.OFF for k in color_kw.keys()}
+            await sender.send_broadcast_tally(text='foo', **color_kw)
+            await wait_for_receiver()
+
+            # Check the tally colors and text values
+            for rx_tally in receiver.tallies.values():
+                tx_tally = sender.tallies[rx_tally.index]
+                assert rx_tally.text == tx_tally.text == 'foo'
+                assert rx_tally.rh_tally == tx_tally.rh_tally == TallyColor.OFF
+                assert rx_tally.txt_tally == tx_tally.txt_tally == TallyColor.OFF
+                assert rx_tally.lh_tally == tx_tally.lh_tally == TallyColor.OFF
+
+
+
+            # Send broadcast tally control messages
+            for control_data in [b'foo', b'bar', b'baz']:
+                await sender.send_broadcast_tally(control=control_data)
+                await wait_for_receiver()
+
+                # Check for the correct control data and ensure other values
+                # remain unchanged
+                for rx_tally in receiver.tallies.values():
+                    tx_tally = sender.tallies[rx_tally.index]
+                    assert rx_tally.control == tx_tally.control == control_data
+                    assert rx_tally.text == tx_tally.text == 'foo'
+                    assert rx_tally.rh_tally == tx_tally.rh_tally == TallyColor.OFF
+                    assert rx_tally.txt_tally == tx_tally.txt_tally == TallyColor.OFF
+                    assert rx_tally.lh_tally == tx_tally.lh_tally == TallyColor.OFF
+
+            # Do the same as above, but using the `sender.send_broadcast_tally_control` method
+            # and change one tally color
+            for control_data in [b'abc', b'def', b'ghi']:
+                await sender.send_broadcast_tally_control(control_data, rh_tally=TallyColor.RED)
+
+                await wait_for_receiver()
+
+                # Check for the correct control data and ensure other values
+                for rx_tally in receiver.tallies.values():
+                    tx_tally = sender.tallies[rx_tally.index]
+                    assert rx_tally.control == tx_tally.control == control_data
+                    assert rx_tally.text == tx_tally.text == 'foo'
+                    assert rx_tally.rh_tally == tx_tally.rh_tally == TallyColor.RED
+                    assert rx_tally.txt_tally == tx_tally.txt_tally == TallyColor.OFF
+                    assert rx_tally.lh_tally == tx_tally.lh_tally == TallyColor.OFF
+
+
+
+@pytest.mark.asyncio
 async def test_scontrol(faker, udp_port):
     loop = asyncio.get_event_loop()
 
@@ -116,6 +214,16 @@ async def test_scontrol(faker, udp_port):
 
                 rx_screen, rx_data = evt_args
                 assert rx_screen == i
+                assert rx_data == control_data
+
+                # Send broadcast
+                await sender.send_broadcast_scontrol(data=control_data)
+                evt_args, evt_kwargs = await evt_listener.get()
+
+                # TODO: Can only check for the correct screen index
+                #       the events should provide information about broadcast
+                rx_screen, rx_data = evt_args
+                assert rx_screen == 0xffff
                 assert rx_data == control_data
 
 @pytest.mark.asyncio

@@ -75,6 +75,7 @@ class UmdSender(Dispatcher):
         self.update_task = None
         self.tx_task = None
         self.connected_evt = asyncio.Event()
+        self._tx_lock = asyncio.Lock()
 
     async def open(self):
         """Open connections and begin data transmission
@@ -112,6 +113,16 @@ class UmdSender(Dispatcher):
             data: The data to send in the :attr:`~.Message.scontrol` field
         """
         msg = self._build_message(screen=screen, scontrol=data)
+        await self.send_message(msg)
+
+    async def send_broadcast_scontrol(self, data: bytes):
+        """Send a :attr:`broadcast <.Message.is_broadcast>`
+        :attr:`SCONTROL <.Message.scontrol>` message
+
+        Arguments:
+            data: The data to send in the :attr:`~.Message.scontrol` field
+        """
+        msg = Message.broadcast(scontrol=data)
         await self.send_message(msg)
 
     def add_tally(self, index_: int, **kwargs) -> Tally:
@@ -180,6 +191,49 @@ class UmdSender(Dispatcher):
         msg.displays.append(disp)
         await self.send_message(msg)
 
+    async def send_broadcast_tally_control(self, data: bytes, **kwargs):
+        """Send :attr:`~.Display.control` data as
+        :attr:`broadcast <.Display.is_broadcast>` to all listening displays
+
+        Arguments:
+            **kwargs: Additional keyword arguments to pass to the :class:`~.Tally`
+                constructor
+        """
+        tally = Tally.broadcast(**kwargs)
+        tally.control = data
+        msg = self._build_message()
+        disp = Display.from_tally(tally, msg_type=MessageType.control)
+        msg.displays.append(disp)
+        async with self._tx_lock:
+            await self.send_message(msg)
+            for tally in self.tallies.values():
+                tally.unbind(self)
+                tally.update_from_display(disp)
+                tally.bind_async(self.loop, on_update=self.on_tally_updated)
+
+    async def send_broadcast_tally(self, **kwargs):
+        """Send a :attr:`broadcast <.Display.is_broadcast>` update
+        to all listening displays
+
+        Arguments:
+            **kwargs: The keyword arguments to pass to the :class:`~.Tally`
+                constructor
+        """
+        tally = Tally.broadcast(**kwargs)
+        if tally.text == '' or tally.control != b'':
+            msg_type = MessageType.control
+        else:
+            msg_type = MessageType.display
+        msg = self._build_message()
+        disp = Display.from_tally(tally, msg_type=msg_type)
+        msg.displays.append(disp)
+        async with self._tx_lock:
+            await self.send_message(msg)
+            for tally in self.tallies.values():
+                tally.unbind(self)
+                tally.update_from_display(disp)
+                tally.bind_async(self.loop, on_update=self.on_tally_updated)
+
     async def on_tally_updated(self, tally: Tally, props_changed: Sequence[str], **kwargs):
         if self.running:
             if set(props_changed) == set(['control']):
@@ -203,7 +257,7 @@ class UmdSender(Dispatcher):
             if item is False:
                 self.update_queue.task_done()
                 break
-            elif item is None:
+            elif item is None and not self._tx_lock.locked():
                 await self.send_full_update()
             else:
                 indices = set()
@@ -221,10 +275,11 @@ class UmdSender(Dispatcher):
                     self.update_queue.task_done()
                 msg = self._build_message()
                 tallies = {i:self.tallies[i] for i in indices}
-                for key in sorted(tallies.keys()):
-                    tally = tallies[key]
-                    msg.displays.append(Display.from_tally(tally))
-                await self.send_message(msg)
+                async with self._tx_lock:
+                    for key in sorted(tallies.keys()):
+                        tally = tallies[key]
+                        msg.displays.append(Display.from_tally(tally))
+                    await self.send_message(msg)
 
     async def send_message(self, msg: Message):
         data = msg.build_message()
@@ -232,11 +287,12 @@ class UmdSender(Dispatcher):
             self.transport.sendto(data, client)
 
     async def send_full_update(self):
-        msg = self._build_message()
-        for tally in self.tallies.values():
-            disp = Display.from_tally(tally)
-            msg.displays.append(disp)
-        await self.send_message(msg)
+        async with self._tx_lock:
+            msg = self._build_message()
+            for tally in self.tallies.values():
+                disp = Display.from_tally(tally)
+                msg.displays.append(disp)
+            await self.send_message(msg)
 
     def _build_message(self, **kwargs) -> Message:
         return Message(**kwargs)
