@@ -22,7 +22,7 @@ def test_tally_display_conversion(faker):
     # i = 0
     # if True:
     for _ in range(100):
-        i = faker.pyint(max_value=65534)
+        i = faker.pyint(max_value=0xfffe)
         disp = Display(index=i)
         tally = Tally(i)
         for tally_type, color in iter_tally_types_and_colors():
@@ -42,6 +42,20 @@ def test_tally_display_conversion(faker):
                 assert disp == Tally.from_display(disp) == tally
                 assert disp == Display.from_tally(tally) == tally
                 assert Tally.from_display(disp).normalized_brightness == tally.normalized_brightness
+
+def test_broadcast(faker):
+    for _ in range(1000):
+        i = faker.pyint(max_value=0xfffe)
+        tally = Tally(i)
+        assert not tally.is_broadcast
+        assert not Display.from_tally(tally).is_broadcast
+
+    tally1 = Tally(0xffff)
+    tally2 = Tally.broadcast()
+    assert tally1.is_broadcast
+    assert tally2.is_broadcast
+    assert Display.from_tally(tally1).is_broadcast
+    assert Display.from_tally(tally2).is_broadcast
 
 class Listener:
     def __init__(self):

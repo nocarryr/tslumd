@@ -230,6 +230,8 @@ class Display:
         kw = tally.to_dict()
         if msg_type == MessageType.control:
             del kw['text']
+        elif msg_type == MessageType.display:
+            del kw['control']
         kw['type'] = msg_type
         return cls(**kw)
 

@@ -51,9 +51,26 @@ class Tally(Dispatcher):
 
     @property
     def index(self) -> int:
-        """Index of the tally object from ``0`` to ``65534``
+        """Index of the tally object from 0 to 65534 (``0xfffe``)
         """
         return self.__index
+
+    @property
+    def is_broadcast(self) -> bool:
+        """``True`` if the tally is to be "broadcast", meaning sent to all
+        :attr:`display indices<.messages.Display.index>`.
+
+        (if the :attr:`index` is ``0xffff``)
+        """
+        return self.index == 0xffff
+
+    @classmethod
+    def broadcast(cls, **kwargs) -> 'Tally':
+        """Create a :attr:`broadcast <is_broadcast>` tally
+
+        (with :attr:`index` set to ``0xffff``)
+        """
+        return cls(0xffff, **kwargs)
 
     @classmethod
     def from_display(cls, display: 'tslumd.Display') -> 'Tally':
