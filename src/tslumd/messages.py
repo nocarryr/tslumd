@@ -15,6 +15,8 @@ __all__ = (
 
 class ParseError(Exception):
     """Raised on errors during message parsing
+
+    .. versionadded:: 0.0.2
     """
     msg: str #: Error message
     value: bytes #: The relevant message bytes containing the error
@@ -26,16 +28,22 @@ class ParseError(Exception):
 
 class MessageParseError(ParseError):
     """Raised on errors while parsing :class:`Message` objects
+
+    .. versionadded:: 0.0.2
     """
     pass
 
 class DmsgParseError(ParseError):
     """Raised on errors while parsing :class:`Display` objects
+
+    .. versionadded:: 0.0.2
     """
     pass
 
 class DmsgControlParseError(ParseError):
     """Raised on errors when parsing :attr:`Display.control` data
+
+    .. versionadded:: 0.0.2
     """
     pass
 
@@ -53,6 +61,8 @@ class Flags(enum.IntFlag):
 
 class MessageType(enum.Enum):
     """Message type
+
+    .. versionadded:: 0.0.2
     """
     _unset = 0
     display = 1 #: A message containing tally display information
@@ -69,7 +79,10 @@ class Display:
     brightness: int = 3 #: Display brightness (from 0 to 3)
     text: str = '' #: Text to display
     control: bytes = b''
-    """Control data (if :attr:`type` is :attr:`~MessageType.control`)"""
+    """Control data (if :attr:`type` is :attr:`~MessageType.control`)
+
+    .. versionadded:: 0.0.2
+    """
 
     type: MessageType = MessageType.display
     """The message type. One of :attr:`~MessageType.display` or
@@ -79,6 +92,8 @@ class Display:
       :attr:`text` information and the :attr:`control` field must be empty.
     * For :attr:`~MessageType.control`, the message contains :attr:`control`
       data and the :attr:`text` field must be empty
+
+    .. versionadded:: 0.0.2
     """
 
     is_broadcast: bool = field(init=False)
@@ -86,6 +101,8 @@ class Display:
     indices.
 
     (if the :attr:`index` is ``0xffff``)
+
+    .. versionadded:: 0.0.2
     """
 
     def __post_init__(self):
@@ -100,6 +117,8 @@ class Display:
         """Create a :attr:`broadcast <is_broadcast>` display
 
         (with :attr:`index` set to ``0xffff``)
+
+        .. versionadded:: 0.0.2
         """
         kwargs = kwargs.copy()
         kwargs['index'] = 0xffff
@@ -166,6 +185,8 @@ class Display:
             This is undefined as of UMDv5.0 and its implementation is
             the author's "best guess" based off of other areas of the protocol
 
+        .. versionadded:: 0.0.2
+
         :meta public:
         """
         if len(data) < 2:
@@ -190,6 +211,8 @@ class Display:
         Note:
             This is undefined as of UMDv5.0 and its implementation is
             the author's "best guess" based off of other areas of the protocol
+
+        .. versionadded:: 0.0.2
 
         :meta public:
         """
@@ -226,6 +249,9 @@ class Display:
     @classmethod
     def from_tally(cls, tally: Tally, msg_type: MessageType = MessageType.display) -> 'Display':
         """Create a :class:`Display` from the given :class:`~.Tally`
+
+        .. versionadded:: 0.0.2
+            The msg_type argument
         """
         kw = tally.to_dict()
         if msg_type == MessageType.control:
@@ -279,12 +305,16 @@ class Message:
       :attr:`displays` are used and the :attr:`scontrol` field must be empty.
     * For :attr:`~MessageType.control`, the :attr:`scontrol` field is used and
       :attr:`displays` must be empty.
+
+    .. versionadded:: 0.0.2
     """
 
     is_broadcast: bool = field(init=False)
     """``True`` if the message is to be "broadcast" to all screens.
 
     (if :attr:`screen` is ``0xffff``)
+
+    .. versionadded:: 0.0.2
     """
 
     def __post_init__(self):
@@ -311,6 +341,8 @@ class Message:
         """Create a :attr:`broadcast <is_broadcast>` message
 
         (with :attr:`screen` set to ``0xffff``)
+
+        .. versionadded:: 0.0.2
         """
         kwargs = kwargs.copy()
         kwargs['screen'] = 0xffff

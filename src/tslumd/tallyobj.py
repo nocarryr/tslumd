@@ -33,6 +33,8 @@ class Tally(Dispatcher):
 
             Fired when control data is received for the tally indicator
 
+    .. versionadded:: 0.0.2
+        The :event:`on_control` event
     """
     rh_tally = Property(TallyColor.OFF)
     txt_tally = Property(TallyColor.OFF)
@@ -61,6 +63,8 @@ class Tally(Dispatcher):
         :attr:`display indices<.messages.Display.index>`.
 
         (if the :attr:`index` is ``0xffff``)
+
+        .. versionadded:: 0.0.2
         """
         return self.index == 0xffff
 
@@ -69,6 +73,8 @@ class Tally(Dispatcher):
         """Create a :attr:`broadcast <is_broadcast>` tally
 
         (with :attr:`index` set to ``0xffff``)
+
+        .. versionadded:: 0.0.2
         """
         return cls(0xffff, **kwargs)
 

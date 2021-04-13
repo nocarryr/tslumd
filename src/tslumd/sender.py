@@ -111,6 +111,8 @@ class UmdSender(Dispatcher):
         Arguments:
             screen: The :attr:`~.Message.screen` for the message
             data: The data to send in the :attr:`~.Message.scontrol` field
+
+        .. versionadded:: 0.0.2
         """
         msg = self._build_message(screen=screen, scontrol=data)
         await self.send_message(msg)
@@ -121,6 +123,8 @@ class UmdSender(Dispatcher):
 
         Arguments:
             data: The data to send in the :attr:`~.Message.scontrol` field
+
+        .. versionadded:: 0.0.2
         """
         msg = Message.broadcast(scontrol=data)
         await self.send_message(msg)
@@ -180,6 +184,8 @@ class UmdSender(Dispatcher):
         Arguments:
             index_: The tally :attr:`~.Tally.index`
             control: The control data to send
+
+        .. versionadded:: 0.0.2
         """
         if index_ not in self.tallies:
             tally = self.add_tally(index_)
@@ -198,6 +204,8 @@ class UmdSender(Dispatcher):
         Arguments:
             **kwargs: Additional keyword arguments to pass to the :class:`~.Tally`
                 constructor
+
+        .. versionadded:: 0.0.2
         """
         tally = Tally.broadcast(**kwargs)
         tally.control = data
@@ -218,6 +226,8 @@ class UmdSender(Dispatcher):
         Arguments:
             **kwargs: The keyword arguments to pass to the :class:`~.Tally`
                 constructor
+
+        .. versionadded:: 0.0.2
         """
         tally = Tally.broadcast(**kwargs)
         if tally.text == '' or tally.control != b'':

@@ -51,6 +51,8 @@ class UmdReceiver(Dispatcher):
               control message
             * ``data`` : The control data
 
+    .. versionadded:: 0.0.2
+        The :event:`on_scontrol` event
     """
 
     DEFAULT_HOST: str = '0.0.0.0' #: The default host address to listen on
@@ -161,6 +163,9 @@ class UmdReceiver(Dispatcher):
 
         If data received is a :attr:`broadcast <.messages.Display.is_broadcast>`
         display, all existing :attr:`tallies` are updated
+
+        .. versionadded:: 0.0.2
+            Broadcast support
         """
         if rx_display.is_broadcast:
             for tally in self.tallies.values():
