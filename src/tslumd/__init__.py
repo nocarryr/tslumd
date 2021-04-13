@@ -4,6 +4,12 @@ and other production display/control purposes.
 .. _UMDv5.0 Protocol: https://tslproducts.com/media/1959/tsl-umd-protocol.pdf
 .. _TSL Products: https://tslproducts.com
 """
+import importlib.metadata
+try:
+    __version__ = importlib.metadata.version('tslumd')
+except importlib.metadata.PackageNotFoundError:
+    __version__ = 'unknown'
+
 try:
     from loguru import logger
 except ImportError: # pragma: no cover

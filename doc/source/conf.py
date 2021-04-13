@@ -15,6 +15,7 @@ import sys
 # sys.path.insert(0, os.path.abspath('.'))
 sys.path.append(os.path.abspath('./ext'))
 
+import importlib.metadata
 
 # -- Project information -----------------------------------------------------
 
@@ -23,7 +24,7 @@ copyright = '2021, Matthew Reid'
 author = 'Matthew Reid'
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
+release = importlib.metadata.version(project)
 
 # <napoleon monkeypatching> --------------------------------------------------
 # Hacked on Sphinx v2.2.2
