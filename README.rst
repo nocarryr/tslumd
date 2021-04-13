@@ -3,6 +3,20 @@ tslumd
 
 Client and Server for TSLUMD Tally Protocols
 
+
+Links
+=====
+
+.. list-table::
+
+    * - Project Home
+      - https://github.com/nocarryr/tslumd
+    * - Documentation
+      - https://tslumd.readthedocs.io
+    * - PyPI
+      - https://pypi.org/project/tslumd
+
+
 License
 =======
 
