@@ -44,6 +44,82 @@ def test_messages():
 
     assert msgobj == parsed
 
+def test_broadcast_message(faker):
+    for i in range(1000):
+        # Create Messages with random `screen` value in the non-broadcast range
+        # and ensure the `is_broadcast` field is correct in both the
+        # instance and its parsed version
+        screen = faker.pyint(max_value=0xfffe)
+        msgobj = Message(screen=screen)
+        msgobj.displays.append(Display(index=i))
+        assert not msgobj.is_broadcast
+
+        parsed, remaining = Message.parse(msgobj.build_message())
+        assert not msgobj.is_broadcast
+
+    # Create broadcast Messages using both methods and check the `is_broadcast`
+    # field on the instances and their parsed versions
+    msgobj1 = Message(screen=0xffff)
+    msgobj1.displays.append(Display(index=1))
+    assert msgobj1.is_broadcast
+    parsed1, remaining = Message.parse(msgobj1.build_message())
+    assert parsed1.is_broadcast
+
+    msgobj2 = Message.broadcast(displays=[Display(index=1)])
+    assert msgobj2.is_broadcast
+    parsed2, remaining = Message.parse(msgobj2.build_message())
+    assert parsed2.is_broadcast
+
+    assert msgobj1 == msgobj2 == parsed1 == parsed2
+
+def test_broadcast_display(uhs500_msg_parsed, faker):
+
+    disp_attrs = ('rh_tally', 'txt_tally', 'lh_tally', 'text', 'brightness')
+    msgobj = Message()
+
+    for uhs_disp in uhs500_msg_parsed.displays:
+        assert not uhs_disp.is_broadcast
+
+        # General kwargs excluding the `index`
+        kw = {attr:getattr(uhs_disp, attr) for attr in disp_attrs}
+
+        # Create random Displays within non-broadcast range and check the
+        # `is_broadcast` field of the instance and its parsed version
+        for _ in range(1000):
+            ix = faker.pyint(max_value=0xfffe)
+            disp = Display(index=ix, **kw)
+            assert not disp.is_broadcast
+
+            parsed, remaining = Display.from_dmsg(msgobj.flags, disp.to_dmsg(msgobj.flags))
+            assert not parsed.is_broadcast
+            assert parsed == disp
+
+        # Create broadcast Displays using both methods and check the
+        # `is_broadcast` field on the instances and their parsed versions
+        bc_disp1 = Display.broadcast(**kw)
+        bc_disp2 = Display(index=0xffff, **kw)
+        assert bc_disp1.is_broadcast
+        assert bc_disp2.is_broadcast
+
+        parsed1, remaining = Display.from_dmsg(msgobj.flags, bc_disp1.to_dmsg(msgobj.flags))
+        assert parsed1.is_broadcast
+
+        parsed2, remaining = Display.from_dmsg(msgobj.flags, bc_disp2.to_dmsg(msgobj.flags))
+        assert parsed2.is_broadcast
+
+        assert bc_disp1 == bc_disp2 == parsed1 == parsed2
+
+        # Add the broadcast Display to the Message at the top
+        msgobj.displays.append(bc_disp1)
+
+    # Check the `is_broadcast` field in the displays after Message building / parsing
+    parsed, remaining = Message.parse(msgobj.build_message())
+    for parsed_disp, bc_disp in zip(parsed.displays, msgobj.displays):
+        assert parsed_disp.is_broadcast
+        assert parsed_disp == bc_disp
+
+
+
 def test_scontrol(faker):
     for _ in range(100):
         data_len = faker.pyint(min_value=1, max_value=1024)

@@ -62,7 +62,7 @@ class MessageType(enum.Enum):
 class Display:
     """A single tally "display"
     """
-    index: int #: The display index
+    index: int #: The display index from 0 to 65534 (``0xFFFE``)
     rh_tally: TallyColor = TallyColor.OFF #: Right hand tally indicator
     txt_tally: TallyColor = TallyColor.OFF #: Text tally indicator
     lh_tally: TallyColor = TallyColor.OFF #: Left hand tally indicator
@@ -81,11 +81,29 @@ class Display:
       data and the :attr:`text` field must be empty
     """
 
+    is_broadcast: bool = field(init=False)
+    """``True`` if the display is to a "broadcast", meaning sent to all display
+    indices.
+
+    (if the :attr:`index` is ``0xffff``)
+    """
+
     def __post_init__(self):
+        self.is_broadcast = self.index == 0xffff
         if len(self.control):
             self.type = MessageType.control
         if self.type == MessageType.control and len(self.text):
             raise ValueError('Control message cannot contain text')
+
+    @classmethod
+    def broadcast(cls, **kwargs) -> 'Display':
+        """Create a :attr:`broadcast <is_broadcast>` display
+
+        (with :attr:`index` set to ``0xffff``)
+        """
+        kwargs = kwargs.copy()
+        kwargs['index'] = 0xffff
+        return cls(**kwargs)
 
     @classmethod
     def from_dmsg(cls, flags: Flags, dmsg: bytes) -> Tuple['Display', bytes]:
@@ -201,7 +219,9 @@ class Display:
         return data
 
     def to_dict(self) -> Dict:
-        return dataclasses.asdict(self)
+        d = dataclasses.asdict(self)
+        del d['is_broadcast']
+        return d
 
     @classmethod
     def from_tally(cls, tally: Tally, msg_type: MessageType = MessageType.display) -> 'Display':
@@ -242,7 +262,7 @@ class Message:
     """
     version: int = 0 #: Protocol minor version
     flags: int = Flags.NO_FLAGS #: The message :class:`Flags` field
-    screen: int = 0 #: Screen index
+    screen: int = 0 #: Screen index from 0 to 65534 (``0xFFFE``)
     displays: List[Display] = field(default_factory=list)
     """A list of :class:`Display` instances"""
 
@@ -259,7 +279,14 @@ class Message:
       :attr:`displays` must be empty.
     """
 
+    is_broadcast: bool = field(init=False)
+    """``True`` if the message is to be "broadcast" to all screens.
+
+    (if :attr:`screen` is ``0xffff``)
+    """
+
     def __post_init__(self):
+        self.is_broadcast = self.screen == 0xffff
         if not isinstance(self.flags, Flags):
             self.flags = Flags(self.flags)
 
@@ -276,6 +303,16 @@ class Message:
                 self.type = MessageType.control
             else:
                 self.type = MessageType.display
+
+    @classmethod
+    def broadcast(cls, **kwargs) -> 'Message':
+        """Create a :attr:`broadcast <is_broadcast>` message
+
+        (with :attr:`screen` set to ``0xffff``)
+        """
+        kwargs = kwargs.copy()
+        kwargs['screen'] = 0xffff
+        return cls(**kwargs)
 
     @classmethod
     def parse(cls, msg: bytes) -> Tuple['Message', bytes]:
