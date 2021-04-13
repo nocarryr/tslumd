@@ -6,6 +6,8 @@
 Welcome to tslumd's documentation!
 ==================================
 
+.. include:: ../../README.rst
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
