@@ -1,8 +1,10 @@
-# tslumd
+tslumd
+======
 
 Client and Server for TSLUMD Tally Protocols
 
-# License
+License
+=======
 
 Copyright (c) 2021 Matthew Reid <matt@nomadic-recording.com>
 
