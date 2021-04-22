@@ -1,7 +1,10 @@
 import asyncio
 import pytest
 
-from tslumd import TallyType, TallyColor, Message, Display, Tally, UmdReceiver
+from tslumd import (
+    TallyType, TallyColor, TallyKey, Message, Display,
+    Tally, Screen, UmdReceiver,
+)
 from tslumd.messages import ParseError
 
 class EventListener:
@@ -49,6 +52,8 @@ async def test_with_uhs_data(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, 
     evt_listener = EventListener()
     receiver.bind_async(loop, on_tally_added=evt_listener.callback)
 
+    uhs_screen = uhs500_msg_parsed.screen
+
     async with receiver:
 
         # Send message bytes to receiver
@@ -59,12 +64,16 @@ async def test_with_uhs_data(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, 
         while not evt_listener.empty():
             _ = await evt_listener.get()
 
+        screen = receiver.screens[uhs_screen]
+
         # Check all receiver tallies against the expected ones
         assert len(receiver.tallies) == len(uhs500_msg_parsed.displays)
 
         for disp in uhs500_msg_parsed.displays:
-            assert disp.index in receiver.tallies
-            tally = receiver.tallies[disp.index]
+            assert disp.index in screen
+            tally = screen.tallies[disp.index]
+            assert tally.id == (uhs_screen, disp.index)
+            assert receiver.tallies[tally.id] is tally
             assert disp == tally
 
         # Change each display and send the updated message to receiver
@@ -72,7 +81,7 @@ async def test_with_uhs_data(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, 
         receiver.unbind(evt_listener)
         receiver.bind_async(loop, on_tally_updated=evt_listener.callback)
         for disp in uhs500_msg_parsed.displays:
-            tally = receiver.tallies[disp.index]
+            tally = screen.tallies[disp.index]
 
             for tally_type in TallyType:
                 if tally_type == TallyType.no_tally:
@@ -226,7 +235,7 @@ async def test_scontrol(faker, udp_endpoint, udp_port):
             args, kwargs = await evt_listener.get()
 
             screen, rx_data = args
-            assert screen == i
+            assert screen.index == i
             assert rx_data == control_data
 
 
@@ -254,7 +263,9 @@ async def test_parse_errors(faker, udp_endpoint, udp_port):
         receiver.unbind(evt_listener)
         receiver.bind_async(loop, on_tally_updated=evt_listener.callback)
 
-        rx_disp = receiver.tallies[disp.index]
+        screen = receiver.screens[msgobj.screen]
+        rx_disp = screen[disp.index]
+        assert rx_disp is receiver.tallies[rx_disp.id]
         assert rx_disp == disp
 
         for i in range(100):
