@@ -246,6 +246,7 @@ class Display:
             The msg_type argument
         """
         kw = tally.to_dict()
+        del kw['id']
         if msg_type == MessageType.control:
             del kw['text']
         elif msg_type == MessageType.display:
@@ -260,6 +261,8 @@ class Display:
         oth_dict = other.to_dict()
         if isinstance(other, Display):
             return self_dict == oth_dict
+        else:
+            del oth_dict['id']
 
         del self_dict['type']
         if self.type == MessageType.control:
