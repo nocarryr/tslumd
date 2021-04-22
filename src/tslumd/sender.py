@@ -10,7 +10,10 @@ from typing import Dict, Tuple, Set, Optional, Sequence
 
 from pydispatch import Dispatcher, Property, DictProperty, ListProperty
 
-from tslumd import MessageType, Message, Display, TallyColor, TallyType, Tally
+from tslumd import (
+    MessageType, Message, Display, TallyColor, TallyType, TallyKey,
+    Tally, Screen,
+)
 from tslumd.utils import logger_catch
 
 Client = Tuple[str, int] #: A network client as a tuple of ``(address, port)``
@@ -41,11 +44,27 @@ class UmdSender(Dispatcher):
         clients: Intitial value for :attr:`clients`
     """
 
-    tallies: Dict[int, Tally]
-    """Mapping of :class:`Tally` objects using the :attr:`~Tally.index` as keys
+    screens: Dict[int, Screen]
+    """Mapping of :class:`~.Screen` objects by :attr:`~.Screen.index`
+
+    .. versionadded:: 0.0.3
+    """
+
+    tallies: Dict[TallyKey, Tally]
+    """Mapping of :class:`~.Tally` objects by their :attr:`~.Tally.id`
 
     Note:
         This should not be altered directly. Use :meth:`add_tally` instead
+
+    .. versionchanged:: 0.0.3
+        The keys are now a combination of the :class:`~.Screen` and
+        :class:`.Tally` indices
+    """
+
+    broadcast_screen: Screen
+    """A :class:`~.Screen` instance created using :meth:`.Screen.broadcast`
+
+    .. versionadded:: 0.0.3
     """
 
     running: bool
@@ -68,10 +87,15 @@ class UmdSender(Dispatcher):
         if clients is not None:
             for client in clients:
                 self.clients.add(client)
+        self.screens = {}
         self.tallies = {}
         self.running = False
         self.loop = asyncio.get_event_loop()
-        self.update_queue = asyncio.Queue()
+        screen = self.broadcast_screen = Screen.broadcast()
+        assert screen.is_broadcast
+        self.screens[screen.index] = screen
+        self._bind_screen(screen)
+        self.update_queue = asyncio.PriorityQueue()
         self.update_task = None
         self.tx_task = None
         self.connected_evt = asyncio.Event()
@@ -105,17 +129,17 @@ class UmdSender(Dispatcher):
         self.transport.close()
         logger.info('UmdSender closed')
 
-    async def send_scontrol(self, screen: int, data: bytes):
+    async def send_scontrol(self, screen_index: int, data: bytes):
         """Send an :attr:`SCONTROL <.Message.scontrol>` message
 
         Arguments:
-            screen: The :attr:`~.Message.screen` for the message
+            screen_index: The :attr:`~.Message.screen` index for the message
             data: The data to send in the :attr:`~.Message.scontrol` field
 
         .. versionadded:: 0.0.2
         """
-        msg = self._build_message(screen=screen, scontrol=data)
-        await self.send_message(msg)
+        screen = self.get_or_create_screen(screen_index)
+        screen.scontrol = data
 
     async def send_broadcast_scontrol(self, data: bytes):
         """Send a :attr:`broadcast <.Message.is_broadcast>`
@@ -126,130 +150,203 @@ class UmdSender(Dispatcher):
 
         .. versionadded:: 0.0.2
         """
-        msg = Message.broadcast(scontrol=data)
-        await self.send_message(msg)
+        self.broadcast_screen.scontrol = data
 
-    def add_tally(self, index_: int, **kwargs) -> Tally:
-        """Create a :class:`~.Tally` object and add it to :attr:`tallies`
+    def add_tally(self, tally_id: TallyKey, **kwargs) -> Tally:
+        """Create a :class:`~.Tally` object and add it to :attr:`tallies` if
+        one does not exist
+
+        If necessary, creates a :class:`~.Screen` using :meth:`get_or_create_screen`
 
         Arguments:
-            index_: The tally :attr:`~.Tally.index`
+            tally_id: A tuple of (:attr:`screen_index <.Screen.index>`,
+                :attr:`tally_index <.Tally.index>`)
             **kwargs: Keyword arguments passed to create the tally instance
 
         Raises:
-            KeyError: If the given ``index_`` already exists
+            KeyError: If the given ``tally_id`` already exists
+
+        .. versionchanged:: 0.0.3
+            Chaned the ``tally_index`` parameter to ``tally_id``
         """
-        if index_ in self.tallies:
-            raise KeyError(f'Tally exists for index {index_}')
-        tally = Tally(index_, **kwargs)
-        self.tallies[index_] = tally
-        tally.bind_async(self.loop, on_update=self.on_tally_updated)
-        logger.debug(f'new tally: {tally}')
+        if tally_id in self.tallies:
+            raise KeyError(f'Tally exists for id {tally_id}')
+        screen_index, tally_index = tally_id
+        screen = self.get_or_create_screen(screen_index)
+        tally = screen.add_tally(tally_index, **kwargs)
         return tally
 
-    def set_tally_color(self, index_: int, tally_type: TallyType, color: TallyColor):
+    def get_or_create_tally(self, tally_id: TallyKey) -> Tally:
+        """If a :class:`~.Tally` object matching the given tally id exists,
+        return it. Otherwise, create it using :meth:`.Screen.get_or_create_tally`
+
+        This method is similar to :meth:`add_tally` and it can be used to avoid
+        exception handling. It does not however take keyword arguments and
+        is only intended for object creation.
+
+        .. versionadded:: 0.0.3
+        """
+        tally = self.tallies.get(tally_id)
+        if tally is not None:
+            return tally
+        screen_index, tally_index = tally_id
+        screen = self.get_or_create_screen(screen_index)
+        tally = screen.get_or_create_tally(tally_index)
+        return tally
+
+    def get_or_create_screen(self, index_: int) -> Screen:
+        """Create a :class:`~.Screen` object and add it to :attr:`screens`
+
+        Arguments:
+            index_: The screen :attr:`~.Screen.index`
+
+        Raises:
+            KeyError: If the given ``index_`` already exists
+
+        .. versionadded:: 0.0.3
+        """
+        if index_ in self.screens:
+            return self.screens[index_]
+        screen = Screen(index_)
+        self.screens[screen.index] = screen
+        self._bind_screen(screen)
+        return screen
+
+    def _bind_screen(self, screen: Screen):
+        screen.bind(on_tally_added=self._on_screen_tally_added)
+        screen.bind_async(self.loop,
+            on_tally_update=self.on_tally_updated,
+            on_tally_control=self.on_tally_control,
+            on_control=self.on_screen_control,
+        )
+
+    def set_tally_color(self, tally_id: TallyKey, tally_type: TallyType, color: TallyColor):
         """Set the tally color for the given index and tally type
 
         Arguments:
-            index_: The tally :attr:`~.Tally.index`
+            tally_id: A tuple of (:attr:`screen_index <.Screen.index>`,
+                :attr:`tally_index <.Tally.index>`)
             tally_type: A member of :class:`~.common.TallyType` specifying the
                 tally lamp within the display
             color: The member of :class:`~.common.TallyColor` to set
+
+        .. versionchanged:: 0.0.3
+            Chaned the ``tally_index`` parameter to ``tally_id``
         """
         if tally_type == TallyType.no_tally:
             raise ValueError()
-        if index_ not in self.tallies:
-            tally = self.add_tally(index_)
-        else:
-            tally = self.tallies[index_]
+        tally = self.get_or_create_tally(tally_id)
         attr = tally_type.name
         setattr(tally, attr, color)
 
-    def set_tally_text(self, index_: int, text: str):
-        """Set the tally text for the given index
+    def set_tally_text(self, tally_id: TallyKey, text: str):
+        """Set the tally text for the given id
 
         Arguments:
-            index_: The tally :attr:`~.Tally.index`
+            tally_id: A tuple of (:attr:`screen_index <.Screen.index>`,
+                :attr:`tally_index <.Tally.index>`)
             text: The :attr:`~.Tally.text` to set
+
+        .. versionchanged:: 0.0.3
+            Chaned the ``tally_index`` parameter to ``tally_id``
         """
-        if index_ not in self.tallies:
-            tally = self.add_tally(index_)
-        else:
-            tally = self.tallies[index_]
+        tally = self.get_or_create_tally(tally_id)
         tally.text = text
 
-    async def send_tally_control(self, index_: int, data: bytes):
-        """Send :attr:`~.Display.control` data for the given tally index
+    async def send_tally_control(self, tally_id: TallyKey, data: bytes):
+        """Send :attr:`~.Display.control` data for the given screen and tally index
 
         Arguments:
-            index_: The tally :attr:`~.Tally.index`
+            tally_id: A tuple of (:attr:`screen_index <.Screen.index>`,
+                :attr:`tally_index <.Tally.index>`)
             control: The control data to send
 
         .. versionadded:: 0.0.2
-        """
-        if index_ not in self.tallies:
-            tally = self.add_tally(index_)
-        else:
-            tally = self.tallies[index_]
-        tally.control = data
-        msg = self._build_message()
-        disp = Display.from_tally(tally, msg_type=MessageType.control)
-        msg.displays.append(disp)
-        await self.send_message(msg)
 
-    async def send_broadcast_tally_control(self, data: bytes, **kwargs):
+        .. versionchanged:: 0.0.3
+            Chaned the ``tally_index`` parameter to ``tally_id``
+        """
+        tally = self.get_or_create_tally(tally_id)
+        tally.control = data
+
+    async def send_broadcast_tally_control(self, screen_index: int, data: bytes, **kwargs):
         """Send :attr:`~.Display.control` data as
         :attr:`broadcast <.Display.is_broadcast>` to all listening displays
 
         Arguments:
+            screen_index: The screen :attr:`~.Screen.index`
             **kwargs: Additional keyword arguments to pass to the :class:`~.Tally`
                 constructor
 
         .. versionadded:: 0.0.2
-        """
-        tally = Tally.broadcast(**kwargs)
-        tally.control = data
-        msg = self._build_message()
-        disp = Display.from_tally(tally, msg_type=MessageType.control)
-        msg.displays.append(disp)
-        async with self._tx_lock:
-            await self.send_message(msg)
-            for tally in self.tallies.values():
-                tally.unbind(self)
-                tally.update_from_display(disp)
-                tally.bind_async(self.loop, on_update=self.on_tally_updated)
 
-    async def send_broadcast_tally(self, **kwargs):
+        .. versionchanged:: 0.0.3
+            Added the screen_index parameter
+        """
+        await self.send_broadcast_tally(screen_index, control=data, **kwargs)
+
+    async def send_broadcast_tally(self, screen_index: int, **kwargs):
         """Send a :attr:`broadcast <.Display.is_broadcast>` update
         to all listening displays
 
         Arguments:
+            screen_index: The screen :attr:`~.Screen.index`
             **kwargs: The keyword arguments to pass to the :class:`~.Tally`
                 constructor
 
         .. versionadded:: 0.0.2
+
+        .. versionchanged:: 0.0.3
+            Added the screen_index parameter
         """
-        tally = Tally.broadcast(**kwargs)
+        screen = self.get_or_create_screen(screen_index)
+        tally = screen.broadcast_tally(**kwargs)
         if tally.text == '' or tally.control != b'':
             msg_type = MessageType.control
         else:
             msg_type = MessageType.display
-        msg = self._build_message()
+        msg = self._build_message(screen=screen_index)
         disp = Display.from_tally(tally, msg_type=msg_type)
         msg.displays.append(disp)
         async with self._tx_lock:
             await self.send_message(msg)
-            for tally in self.tallies.values():
-                tally.unbind(self)
-                tally.update_from_display(disp)
-                tally.bind_async(self.loop, on_update=self.on_tally_updated)
+            screen.unbind(self)
+            for oth_tally in screen:
+                oth_tally.update_from_display(disp)
+            self._bind_screen(screen)
 
-    async def on_tally_updated(self, tally: Tally, props_changed: Sequence[str], **kwargs):
+    async def on_tally_updated(self, tally: Tally, props_changed: Set[str], **kwargs):
         if self.running:
             if set(props_changed) == set(['control']):
                 return
             logger.debug(f'tally update: {tally}')
-            await self.update_queue.put(tally.index)
+            await self.update_queue.put(tally.id)
+
+    async def on_tally_control(self, tally: Tally, data: bytes, **kwargs):
+        if self.running:
+            async with self._tx_lock:
+                disp = Display.from_tally(tally, msg_type=MessageType.control)
+                msg = self._build_message(
+                    screen=tally.screen.index,
+                    displays=[disp],
+                )
+                await self.send_message(msg)
+
+
+    async def on_screen_control(self, screen: Screen, data: bytes, **kwargs):
+        if self.running:
+            async with self._tx_lock:
+                msg = self._build_message(
+                    screen=screen.index,
+                    type=MessageType.control,
+                    scontrol=data,
+                )
+                await self.send_message(msg)
+
+
+    def _on_screen_tally_added(self, tally: Tally, **kwargs):
+        self.tallies[tally.id] = tally
+        logger.debug(f'new tally: {tally}')
 
     @logger_catch
     async def tx_loop(self):
@@ -270,8 +367,8 @@ class UmdSender(Dispatcher):
             elif item is None and not self._tx_lock.locked():
                 await self.send_full_update()
             else:
-                indices = set()
-                indices.add(item)
+                screen_index, _ = item
+                ids = set([item])
                 self.update_queue.task_done()
                 while not self.update_queue.empty():
                     try:
@@ -281,10 +378,16 @@ class UmdSender(Dispatcher):
                     if item is False:
                         self.update_queue.task_done()
                         return
-                    indices.add(item)
-                    self.update_queue.task_done()
-                msg = self._build_message()
-                tallies = {i:self.tallies[i] for i in indices}
+                    _screen_index, _ = item
+                    if _screen_index == screen_index:
+                        ids.add(item)
+                        self.update_queue.task_done()
+                    else:
+                        await self.update_queue.put(item)
+                        break
+
+                msg = self._build_message(screen=screen_index)
+                tallies = {i:self.tallies[i] for i in ids}
                 async with self._tx_lock:
                     for key in sorted(tallies.keys()):
                         tally = tallies[key]
@@ -297,12 +400,22 @@ class UmdSender(Dispatcher):
             self.transport.sendto(data, client)
 
     async def send_full_update(self):
+        coros = set()
+        for screen in self.screens.values():
+            coros.add(self.send_screen_update(screen))
+        if not len(coros): # pragma: no cover
+            return
         async with self._tx_lock:
-            msg = self._build_message()
-            for tally in self.tallies.values():
-                disp = Display.from_tally(tally)
-                msg.displays.append(disp)
-            await self.send_message(msg)
+            await asyncio.gather(*coros)
+
+    async def send_screen_update(self, screen: Screen):
+        if screen.is_broadcast:
+            return
+        msg = self._build_message(screen=screen.index)
+        for tally in screen:
+            disp = Display.from_tally(tally)
+            msg.displays.append(disp)
+        await self.send_message(msg)
 
     def _build_message(self, **kwargs) -> Message:
         return Message(**kwargs)
