@@ -123,7 +123,7 @@ class UmdSender(Dispatcher):
             return
         logger.debug('UmdSender.close()')
         self.running = False
-        await self.update_queue.put(False)
+        await self.update_queue.put((0, False))
         await self.tx_task
         self.tx_task = None
         self.transport.close()
@@ -353,6 +353,8 @@ class UmdSender(Dispatcher):
         async def get_queue_item(timeout):
             try:
                 item = await asyncio.wait_for(self.update_queue.get(), timeout)
+                if item[1] is False:
+                    return False
             except asyncio.TimeoutError:
                 item = None
             return item
