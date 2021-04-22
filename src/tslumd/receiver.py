@@ -8,7 +8,7 @@ from typing import Dict, Tuple, Set, Optional
 
 from pydispatch import Dispatcher, Property, DictProperty, ListProperty
 
-from tslumd import Tally, TallyColor, MessageType, Message, Display
+from tslumd import Tally, Screen, TallyKey, Message
 
 __all__ = ('UmdReceiver',)
 
@@ -43,6 +43,18 @@ class UmdReceiver(Dispatcher):
 
             Fired when any :class:`~.Tally` instance has been updated
 
+        .. event:: on_tally_control(tally: Tally, data: bytes)
+
+            Fired when control data has been received for a :class:`~.Tally`
+
+            .. versionadded:: 0.0.3
+
+        .. event:: on_screen_added(screen: Screen)
+
+            Fired when a :class:`~.Screen` instance is added to :attr:`screens`
+
+            .. versionadded:: 0.0.3
+
         .. event:: on_scontrol(screen: int, data: bytes)
 
             Fired when a message with :attr:`~.Message.scontrol` data is received
@@ -51,16 +63,31 @@ class UmdReceiver(Dispatcher):
               control message
             * ``data`` : The control data
 
-    .. versionadded:: 0.0.2
-        The :event:`on_scontrol` event
+            .. versionadded:: 0.0.2
+
     """
 
     DEFAULT_HOST: str = '0.0.0.0' #: The default host address to listen on
     DEFAULT_PORT: int = 65000 #: The default host port to listen on
 
-    tallies: Dict[int, Tally]
-    """Mapping of :class:`~.Tally` objects using
-    the :attr:`~.Tally.index` as keys
+    screens: Dict[int, Screen]
+    """Mapping of :class:`~.Screen` objects by :attr:`~.Screen.index`
+
+    .. versionadded:: 0.0.3
+    """
+
+    broadcast_screen: Screen
+    """A :class:`~.Screen` instance created using :meth:`.Screen.broadcast`
+
+    .. versionadded:: 0.0.3
+    """
+
+    tallies: Dict[TallyKey, Tally]
+    """Mapping of :class:`~.Tally` objects by their :attr:`~.Tally.id`
+
+    .. versionchanged:: 0.0.3
+        The keys are now a combination of the :class:`~.Screen` and
+        :class:`.Tally` indices
     """
 
     running: bool
@@ -70,10 +97,17 @@ class UmdReceiver(Dispatcher):
     loop: asyncio.BaseEventLoop
     """The :class:`asyncio.BaseEventLoop` associated with the instance"""
 
-    _events_ = ['on_tally_added', 'on_tally_updated', 'on_scontrol']
+    _events_ = [
+        'on_tally_added', 'on_tally_updated', 'on_tally_control',
+        'on_screen_added', 'on_scontrol',
+    ]
     def __init__(self, hostaddr: str = DEFAULT_HOST, hostport: int = DEFAULT_PORT):
         self.__hostaddr = hostaddr
         self.__hostport = hostport
+        self.screens = {}
+        self.broadcast_screen = Screen(0xffff)
+        self._bind_screen(self.broadcast_screen)
+        self.screens[self.broadcast_screen.index] = self.broadcast_screen
         self.tallies = {}
         self.loop = asyncio.get_event_loop()
         self.running = False
@@ -149,41 +183,44 @@ class UmdReceiver(Dispatcher):
         """
         while True:
             message, remaining = Message.parse(data)
-            if message.type == MessageType.control:
-                self.emit('on_scontrol', message.screen, message.scontrol)
+            if message.screen not in self.screens:
+                screen = Screen(message.screen)
+                self.screens[screen.index] = screen
+                self._bind_screen(screen)
+                self.emit('on_screen_added', screen)
+                logger.debug(f'new screen: {screen.index}')
             else:
-                for display in message.displays:
-                    self.update_display(display)
+                screen = self.screens[message.screen]
+
+            if message.is_broadcast:
+                for screen in self.screens.values():
+                    screen.update_from_message(message)
+            else:
+                screen.update_from_message(message)
             if not len(remaining):
                 break
 
-    def update_display(self, rx_display: Display):
-        """Update or create a :class:`~.Tally` from data received
-        by the server
+    def _bind_screen(self, screen: Screen):
+        screen.bind(
+            on_tally_added=self._on_screen_tally_added,
+            on_tally_update=self._on_screen_tally_update,
+            on_tally_control=self._on_screen_tally_control,
+            on_control=self._on_screen_control,
+        )
 
-        If data received is a :attr:`broadcast <.messages.Display.is_broadcast>`
-        display, all existing :attr:`tallies` are updated
+    def _on_screen_tally_added(self, tally: Tally, **kwargs):
+        if tally.id not in self.tallies:
+            self.tallies[tally.id] = tally
+        self.emit('on_tally_added', tally, **kwargs)
 
-        .. versionadded:: 0.0.2
-            Broadcast support
-        """
-        if rx_display.is_broadcast:
-            for tally in self.tallies.values():
-                changed = tally.update_from_display(rx_display)
-                if changed:
-                    self.emit('on_tally_updated', tally)
-            return
+    def _on_screen_tally_update(self, *args, **kwargs):
+        self.emit('on_tally_updated', *args, **kwargs)
 
-        if rx_display.index not in self.tallies:
-            tally = Tally.from_display(rx_display)
-            self.tallies[rx_display.index] = tally
-            logger.debug(f'New Tally: {tally}')
-            self.emit('on_tally_added', self.tallies[rx_display.index])
-            return
-        tally = self.tallies[rx_display.index]
-        changed = tally.update_from_display(rx_display)
-        if changed:
-            self.emit('on_tally_updated', tally)
+    def _on_screen_tally_control(self, *args, **kwargs):
+        self.emit('on_tally_control', *args, **kwargs)
+
+    def _on_screen_control(self, *args, **kwargs):
+        self.emit('on_scontrol', *args, **kwargs)
 
     async def __aenter__(self):
         await self.open()

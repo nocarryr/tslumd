@@ -5,10 +5,10 @@ import enum
 import struct
 from typing import List, Tuple, Dict
 
-from tslumd import TallyColor, Tally
+from tslumd import MessageType, TallyColor, Tally
 
 __all__ = (
-    'MessageType', 'Display', 'Message', 'ParseError', 'MessageParseError',
+    'Display', 'Message', 'ParseError', 'MessageParseError',
     'DmsgParseError', 'DmsgControlParseError',
 )
 
@@ -59,14 +59,6 @@ class Flags(enum.IntFlag):
     """Indicates the message contains ``SCONTROL`` data if set, otherwise ``DMESG``
     """
 
-class MessageType(enum.Enum):
-    """Message type
-
-    .. versionadded:: 0.0.2
-    """
-    _unset = 0
-    display = 1 #: A message containing tally display information
-    control = 2 #: A message containing control data
 
 @dataclass
 class Display:
@@ -79,18 +71,18 @@ class Display:
     brightness: int = 3 #: Display brightness (from 0 to 3)
     text: str = '' #: Text to display
     control: bytes = b''
-    """Control data (if :attr:`type` is :attr:`~MessageType.control`)
+    """Control data (if :attr:`type` is :attr:`~.MessageType.control`)
 
     .. versionadded:: 0.0.2
     """
 
     type: MessageType = MessageType.display
-    """The message type. One of :attr:`~MessageType.display` or
-    :attr:`~MessageType.control`.
+    """The message type. One of :attr:`~.MessageType.display` or
+    :attr:`~.MessageType.control`.
 
-    * For :attr:`~MessageType.display` (the default), the message contains
+    * For :attr:`~.MessageType.display` (the default), the message contains
       :attr:`text` information and the :attr:`control` field must be empty.
-    * For :attr:`~MessageType.control`, the message contains :attr:`control`
+    * For :attr:`~.MessageType.control`, the message contains :attr:`control`
       data and the :attr:`text` field must be empty
 
     .. versionadded:: 0.0.2
@@ -254,6 +246,7 @@ class Display:
             The msg_type argument
         """
         kw = tally.to_dict()
+        del kw['id']
         if msg_type == MessageType.control:
             del kw['text']
         elif msg_type == MessageType.display:
@@ -268,6 +261,8 @@ class Display:
         oth_dict = other.to_dict()
         if isinstance(other, Display):
             return self_dict == oth_dict
+        else:
+            del oth_dict['id']
 
         del self_dict['type']
         if self.type == MessageType.control:
@@ -295,15 +290,15 @@ class Message:
     """A list of :class:`Display` instances"""
 
     scontrol: bytes = b''
-    """SCONTROL data (if :attr:`type` is :attr:`~MessageType.control`)"""
+    """SCONTROL data (if :attr:`type` is :attr:`~.MessageType.control`)"""
 
     type: MessageType = MessageType.display
-    """The message type. One of :attr:`~MessageType.display` or
-    :attr:`~MessageType.control`.
+    """The message type. One of :attr:`~.MessageType.display` or
+    :attr:`~.MessageType.control`.
 
-    * For :attr:`~MessageType.display` (the default), the contents of
+    * For :attr:`~.MessageType.display` (the default), the contents of
       :attr:`displays` are used and the :attr:`scontrol` field must be empty.
-    * For :attr:`~MessageType.control`, the :attr:`scontrol` field is used and
+    * For :attr:`~.MessageType.control`, the :attr:`scontrol` field is used and
       :attr:`displays` must be empty.
 
     .. versionadded:: 0.0.2
