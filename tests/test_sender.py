@@ -18,6 +18,25 @@ class EventListener:
     async def callback(self, *args, **kwargs):
         await self.results.put((args, kwargs))
 
+@pytest.fixture
+async def udp_endpoint(udp_port0):
+    class Protocol(asyncio.DatagramProtocol):
+        def __init__(self):
+            self.queue = asyncio.Queue()
+            self.connected_evt = asyncio.Event()
+        def connection_made(self, transport):
+            self.connected_evt.set()
+        def datagram_received(self, data, addr):
+            self.queue.put_nowait((data, addr))
+
+    loop = asyncio.get_event_loop()
+    transport, protocol = await loop.create_datagram_endpoint(
+        lambda: Protocol(),
+        ('127.0.0.1', udp_port0),
+    )
+    await protocol.connected_evt.wait()
+    yield (transport, protocol, udp_port0)
+    transport.close()
 
 @pytest.mark.asyncio
 async def test_with_uhs_data(udp_port):
@@ -303,3 +322,157 @@ async def test_disp_control(faker, udp_port):
             rx_tally = evt_args[0]
             assert rx_tally.control == tx_tally.control == control_data
             assert rx_tally == tx_tally
+
+@pytest.mark.asyncio
+async def test_queued_updates_are_separate_messages(udp_endpoint, udp_port):
+    transport, protocol, endpoint_port = udp_endpoint
+    assert udp_port != endpoint_port
+
+    loop = asyncio.get_event_loop()
+
+    sender = UmdSender(clients=[('127.0.0.1', endpoint_port)])
+
+    screens = {}
+
+    async with sender:
+        # Create 10 screens with 10 tallies each
+        # and trigger an update by `set_tally_text`.
+        #
+        # Don't await within the loop so the sender.update_queue gets filled up
+        for screen_index in range(10):
+            screen = Screen(screen_index)
+            screens[screen_index] = screen
+            for tally_index in range(10):
+                t_id = (screen_index, tally_index)
+                txt = f'Tally-{t_id}'
+                sender.set_tally_text(t_id, txt)
+
+        # Now give the `sender.tx_loop` a chance to process the queue
+        await asyncio.sleep(.1)
+
+        # Check each message to make sure they only have a single screen's data.
+        assert not protocol.queue.empty()
+        while not protocol.queue.empty():
+            data, addr = await protocol.queue.get()
+            protocol.queue.task_done()
+
+            parsed, _ = Message.parse(data)
+            print(f'screen {parsed.screen} disp_len={len(parsed.displays)}')
+            # print(parsed)
+            screen = screens[parsed.screen]
+            screen.update_from_message(parsed)
+
+        # Ensure nothing got packed incorrectly by the unique tally.id in the text field
+        for screen in screens.values():
+            for tally in screen:
+                assert tally.text == f'Tally-{tally.id}'
+                assert len(screen.tallies) == 10
+
+@pytest.mark.asyncio
+async def test_broadcast_screen_updates(udp_endpoint, udp_port):
+    transport, protocol, endpoint_port = udp_endpoint
+    assert udp_port != endpoint_port
+
+    loop = asyncio.get_event_loop()
+
+    sender = UmdSender(clients=[('127.0.0.1', endpoint_port)])
+
+    screens = {}
+    bc_screen = Screen.broadcast()
+
+    async with sender:
+
+        # Create 10 screens with 10 tallies each and set their initial values to
+        # `text='Tally-{tally.id}', rh_tally=TallyColor.RED`
+        for screen_index in range(10):
+            screen = Screen(screen_index)
+            screens[screen_index] = screen
+            for tally_index in range(10):
+                t_id = (screen_index, tally_index)
+                txt = f'Tally-{t_id}'
+                sender.set_tally_text(t_id, txt)
+                tx_tally = sender.tallies[t_id]
+
+                # Wait for data from the sender and parse it manually into the screen
+                data, addr = await protocol.queue.get()
+                protocol.queue.task_done()
+                parsed, _ = Message.parse(data)
+                assert parsed.screen == screen_index
+                screen.update_from_message(parsed)
+
+                assert tally_index in screen
+                tally = screen[tally_index]
+                assert tally.text == txt
+
+        # For each screen, send a broadcast tally setting `rh_tally` to `RED`
+        for screen_index, screen in screens.items():
+            await sender.send_broadcast_tally(screen_index, rh_tally=TallyColor.RED)
+
+            # Wait for data and parse it again into the screen
+            data, addr = await protocol.queue.get()
+            protocol.queue.task_done()
+
+            parsed, _ = Message.parse(data)
+            assert parsed.screen == screen_index
+            screen.update_from_message(parsed)
+
+            for tally in screen:
+                assert tally.rh_tally == TallyColor.RED
+
+        # For each tally, send a screen-broadcast (not tally-broadcast) setting
+        # `text='Broadcast-{tally.index}', rh_tally=TallyColor.GREEN`
+        for tally_index in range(10):
+            t_id = (0xffff, tally_index)
+            txt = f'Broadcast-{tally_index}'
+            tally = sender.broadcast_screen.add_tally(tally_index, text=txt)#, rh_tally=TallyColor.GREEN)
+            tally.rh_tally = TallyColor.GREEN
+
+            # Wait for data and parse it into a separate broadcast screen
+            data, addr = await protocol.queue.get()
+            protocol.queue.task_done()
+            parsed, _ = Message.parse(data)
+            assert parsed.screen == 0xffff
+            bc_screen.update_from_message(parsed)
+
+            assert tally_index in bc_screen
+            bc_tally = bc_screen[tally_index]
+            assert bc_tally.id == t_id
+            assert bc_tally.text == txt
+            assert bc_tally.rh_tally == TallyColor.GREEN
+
+            # Parse the same screen-broadcast message into each of the 10 normal screens
+            # This **should** change the tally values as well
+            # (unless I'm mis-interpreting the specification)
+            for screen in screens.values():
+                screen.update_from_message(parsed)
+
+                sc_tally = screen[tally_index]
+
+                assert sc_tally.text == txt
+                assert sc_tally.rh_tally == TallyColor.GREEN
+
+
+        # Wait for the periodic refresh from the sender which **should** send
+        # the original tally states and not the broadcast ones (?)
+        #
+        # That's unclear, but we definitely don't want the broadcast screen
+        # sending constant updates, so let's check that doesn't happen.
+        # (even though that isn't specifically stated either)
+        assert protocol.queue.empty()
+        await asyncio.sleep(sender.tx_interval * 2)
+
+        assert not protocol.queue.empty()
+        while not protocol.queue.empty():
+            data, addr = await protocol.queue.get()
+            protocol.queue.task_done()
+            parsed, _ = Message.parse(data)
+
+            assert parsed.screen in screens
+            assert parsed.screen != 0xffff
+
+            screen = screens[parsed.screen]
+            screen.update_from_message(parsed)
+
+            for tally in screen:
+                assert tally.text == f'Tally-{tally.id}'
+                assert tally.rh_tally == TallyColor.RED
