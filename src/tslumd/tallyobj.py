@@ -208,7 +208,9 @@ class Tally(Dispatcher):
         return f'<{self.__class__.__name__}: ({self})>'
 
     def __str__(self):
-        return f'{self.index} - "{self.text}"'
+        if self.__id is None:
+            return f'{self.index} - "{self.text}"'
+        return f'{self.id} - "{self.text}"'
 
 class Screen(Dispatcher):
     """A group of :class:`Tally` displays
