@@ -49,12 +49,13 @@ class TallyTypeGroup:
 
 class AnimatedSender(UmdSender):
     tally_groups: Dict[TallyType, TallyTypeGroup]
-    def __init__(self, clients=None, num_tallies=8, update_interval=.5):
+    def __init__(self, clients=None, num_tallies=8, update_interval=.5, screen=1):
         self.num_tallies = num_tallies
         self.update_interval = update_interval
         super().__init__(clients)
+        self.screen = self.get_or_create_screen(screen)
         for i in range(self.num_tallies):
-            self.add_tally(i, text=string.ascii_uppercase[i])
+            self.screen.add_tally(i, text=string.ascii_uppercase[i])
 
         self.tally_groups = {}
         for tally_type in TallyType:
@@ -179,6 +180,9 @@ def main():
     )
     p.add_argument(
         '-i', '--interval', dest='update_interval', type=float, default=.5,
+    )
+    p.add_argument(
+        '-s', '--screen', dest='screen', type=int, default=1,
     )
     args = p.parse_args()
 
