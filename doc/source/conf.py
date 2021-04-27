@@ -25,6 +25,7 @@ author = 'Matthew Reid'
 
 # The full version, including alpha/beta/rc tags
 release = importlib.metadata.version(project)
+version = release
 
 # <napoleon monkeypatching> --------------------------------------------------
 # Hacked on Sphinx v2.2.2
