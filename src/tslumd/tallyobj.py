@@ -191,7 +191,7 @@ class Tally(Dispatcher):
         if prop.name == 'control' and value != b'':
             self.emit('on_control', self, value)
         if prop.name == 'brightness':
-            self.normalized_brightness = (value + 1) / 4
+            self.normalized_brightness = value / 3
         self.emit('on_update', self, set([prop.name]))
 
     def __eq__(self, other):
