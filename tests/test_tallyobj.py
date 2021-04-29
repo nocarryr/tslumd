@@ -31,7 +31,7 @@ def test_tally_display_conversion(faker):
             disp.brightness = brightness
             tally.brightness = brightness
             assert 0 <= tally.normalized_brightness <= 1
-            assert tally.normalized_brightness == (brightness + 1) / 4
+            assert tally.normalized_brightness == brightness / 3
             setattr(tally, tally_type.name, color)
             setattr(disp, tally_type.name, color)
             for word in faker.words(3):

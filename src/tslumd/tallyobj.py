@@ -139,7 +139,7 @@ class Tally(Dispatcher):
             props_changed.add(attr)
             setattr(self, attr, val)
             if attr == 'brightness':
-                self.normalized_brightness = (val + 1) / 4
+                self.normalized_brightness = val / 3
             if log_updated:
                 logger.debug(f'{self!r}.{attr} = {val!r}')
         self._updating_props = False
