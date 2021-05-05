@@ -3,13 +3,13 @@ import dataclasses
 from dataclasses import dataclass, field
 import enum
 import struct
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Iterable, Optional
 
 from tslumd import MessageType, TallyColor, Tally
 
 __all__ = (
     'Display', 'Message', 'ParseError', 'MessageParseError',
-    'DmsgParseError', 'DmsgControlParseError',
+    'DmsgParseError', 'DmsgControlParseError', 'MessageLengthError',
 )
 
 
@@ -46,6 +46,12 @@ class DmsgControlParseError(ParseError):
     .. versionadded:: 0.0.2
     """
     pass
+
+class MessageLengthError(ValueError):
+    """Raised when message length is larger than 2048 bytes
+
+    .. versionadded:: 0.0.4
+    """
 
 
 class Flags(enum.IntFlag):
@@ -376,18 +382,81 @@ class Message:
             obj.displays.append(disp)
         return obj, remaining
 
-    def build_message(self) -> bytes:
+    def build_message(self, ignore_packet_length: Optional[bool] = False) -> bytes:
         """Build a message packet from data in this instance
+
+        Arguments:
+            ignore_packet_length (bool, optional): If ``False``, the message limit
+                of 2048 bytes is respected, and if exceeded, an exception is raised.
+                Otherwise, the limit is ignored. (default is False)
+
+        Raises:
+            MessageLengthError: If the message packet is larger than 2048 bytes
+                (and ``ignore_packet_length`` is False)
+
+        Note:
+            This method is retained for backwards compatability. To properly
+            handle the message limit, use :meth:`build_messages`
+
+        .. versionchanged:: 0.0.4
+
+            * The ``ignore_packet_length`` parameter was added
+            * Message length is limited to 2048 bytes
         """
+        it = self.build_messages(ignore_packet_length=ignore_packet_length)
+        data = next(it)
+        try:
+            next_data = next(it)
+        except StopIteration:
+            pass
+        else:
+            if not ignore_packet_length:
+                raise MessageLengthError()
+        return data
+
+    def build_messages(self, ignore_packet_length: Optional[bool] = False) -> Iterable[bytes]:
+        """Build message packet(s) from data in this instance as an iterator
+
+        The specified maximum packet length of 2048 is respected and if
+        necessary, the data will be split into separate messages.
+
+        This method will always function as a :term:`generator`, regardless of
+        the number of message packets produced.
+
+        .. versionadded:: 0.0.4
+        """
+        msg_len_exceeded = False
+        next_disp_index = None
         if self.type == MessageType.control:
             payload = bytearray(self.scontrol)
+            byte_count = len(payload)
+            if byte_count + 6 > 2048:
+                raise MessageLengthError()
         else:
+            byte_count = 0
             payload = bytearray()
-            for display in self.displays:
-                payload.extend(display.to_dmsg(self.flags))
-        payload_byte_count = len(payload)
-        fmt = f'<HBBH{payload_byte_count}B'
+            for disp_index, display in enumerate(self.displays):
+                disp_payload = display.to_dmsg(self.flags)
+                disp_len = len(disp_payload)
+                if not ignore_packet_length:
+                    if byte_count + disp_len + 6 >= 2048:
+                        if disp_index == 0:
+                            raise MessageLengthError()
+                        msg_len_exceeded = True
+                        next_disp_index = disp_index
+                        break
+                byte_count += disp_len
+                payload.extend(disp_payload)
+        fmt = f'<HBBH{byte_count}B'
         pbc = struct.calcsize(fmt) - 2
         data = bytearray(struct.pack('<HBBH', pbc, self.version, self.flags, self.screen))
         data.extend(payload)
-        return bytes(data)
+        yield bytes(data)
+
+        if msg_len_exceeded:
+            displays = self.displays[next_disp_index:]
+            attrs = ('version', 'flags', 'screen', 'scontrol', 'type')
+            kw = {attr:getattr(self, attr) for attr in attrs}
+            kw['displays'] = displays
+            sub_msg = Message(**kw)
+            yield from sub_msg.build_messages()

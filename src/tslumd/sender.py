@@ -414,9 +414,9 @@ class UmdSender(Dispatcher):
                     await self.send_message(msg)
 
     async def send_message(self, msg: Message):
-        data = msg.build_message()
-        for client in self.clients:
-            self.transport.sendto(data, client)
+        for data in msg.build_messages():
+            for client in self.clients:
+                self.transport.sendto(data, client)
 
     async def send_full_update(self):
         coros = set()

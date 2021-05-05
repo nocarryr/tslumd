@@ -4,8 +4,21 @@ import pytest
 from tslumd import TallyColor, Message, Display, MessageType
 from tslumd.messages import (
     Flags, ParseError, DmsgParseError,
-    DmsgControlParseError, MessageParseError,
+    DmsgControlParseError, MessageParseError, MessageLengthError,
 )
+
+@pytest.fixture
+def message_with_lots_of_displays():
+    msgobj = Message()
+    # Message header byte length: 6
+    # Dmsg header byte length: 4
+    # Text length: 2(length bytes) + 9(chars) = 11
+    # Each Dmsg total: 4 + 11 = 15
+    # Dmsg's: 4096 * 15 = 61440
+    # 4096 Dmsg's with Message header: 4096 * 15 + 6 = 61446 bytes
+    for i in range(4096):
+        msgobj.displays.append(Display(index=i, text=f'Foo {i:05d}'))
+    return msgobj
 
 
 def test_uhs_message(uhs500_msg_bytes, uhs500_msg_parsed):
@@ -43,6 +56,45 @@ def test_messages():
         assert getattr(msgobj, attr) == getattr(parsed, attr)
 
     assert msgobj == parsed
+
+
+def test_packet_length(faker, message_with_lots_of_displays):
+    msgobj = message_with_lots_of_displays
+
+    # Make sure the 2048 byte limit is respected
+    with pytest.raises(MessageLengthError):
+        _ = msgobj.build_message()
+
+    # Ensure that the limit can be bypassed
+    msg_bytes = msgobj.build_message(ignore_packet_length=True)
+    parsed, remaining = Message.parse(msg_bytes)
+    assert parsed == msgobj
+
+    # Iterate over individual message packets and make sure we get all displays
+    all_parsed_displays = []
+    for msg_bytes in msgobj.build_messages():
+        assert len(msg_bytes) <= 2048
+        parsed, remaining = Message.parse(msg_bytes)
+        assert not len(remaining)
+        all_parsed_displays.extend(parsed.displays)
+
+    assert len(all_parsed_displays) == len(msgobj.displays)
+    for disp, parsed_disp in zip(msgobj.displays, all_parsed_displays):
+        assert disp.index == parsed_disp.index
+        assert disp.text == parsed_disp.text
+
+    # Create an SCONTROL that exceeds the limit
+    msgobj = Message(scontrol=faker.binary(length=2048))
+    with pytest.raises(MessageLengthError):
+        it = msgobj.build_messages()
+        _ = next(it)
+
+    # Create a Dmsg control that exceeds the limit
+    msgobj = Message(displays=[Display(index=0, control=faker.binary(length=2048))])
+    with pytest.raises(MessageLengthError):
+        it = msgobj.build_messages()
+        _ = next(it)
+
 
 def test_broadcast_message(faker):
     for i in range(1000):
@@ -173,10 +225,14 @@ def test_dmsg_control(uhs500_msg_parsed, faker):
 
             msgobj.displays.append(disp)
 
-        msg_bytes = msgobj.build_message()
-        parsed, remaining = Message.parse(msg_bytes)
-
-        assert not len(remaining)
+        parsed = None
+        for msg_bytes in msgobj.build_messages():
+            _parsed, remaining = Message.parse(msg_bytes)
+            assert not len(remaining)
+            if parsed is None:
+                parsed = _parsed
+            else:
+                parsed.displays.extend(_parsed.displays)
         assert parsed == msgobj
 
         with pytest.raises(ValueError) as excinfo:
