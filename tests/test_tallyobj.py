@@ -4,17 +4,12 @@ import asyncio
 
 from tslumd import Tally, TallyColor, TallyType, Display
 
-def iter_tally_types():
-    for tally_type in TallyType:
-        if tally_type == TallyType.no_tally:
-            continue
-        yield tally_type
 
 def iter_tally_colors():
     yield from TallyColor
 
 def iter_tally_types_and_colors():
-    yield from itertools.product(iter_tally_types(), iter_tally_colors())
+    yield from itertools.product(TallyType.all(), iter_tally_colors())
 
 
 

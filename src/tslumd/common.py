@@ -1,5 +1,5 @@
 import enum
-from typing import Tuple
+from typing import Tuple, Iterable
 
 __all__ = ('TallyColor', 'TallyType', 'TallyState', 'MessageType', 'TallyKey')
 
@@ -17,6 +17,16 @@ class TallyType(enum.Enum):
     rh_tally = 1  #: "Right-hand" tally
     txt_tally = 2 #: "Text" tally
     lh_tally = 3  #: "Left-hand" tally
+
+    @classmethod
+    def all(cls) -> Iterable['TallyType']:
+        """Iterate over all members, excluding :attr:`no_tally`
+
+        .. versionadded:: 0.0.4
+        """
+        for ttype in cls:
+            if ttype != TallyType.no_tally:
+                yield ttype
 
 class TallyState(enum.IntFlag):
     OFF = 0     #: Off

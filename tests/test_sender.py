@@ -85,9 +85,7 @@ async def test_with_uhs_data(udp_port):
 
             # Change each tally/tally_type color to red and check the received values
             for tx_tally in sender.tallies.values():
-                for tally_type in TallyType:
-                    if tally_type == TallyType.no_tally:
-                        continue
+                for tally_type in TallyType.all():
                     sender.set_tally_color(tx_tally.id, tally_type, TallyColor.RED)
 
                     evt_args, evt_kwargs = await evt_listener.get()
@@ -109,9 +107,7 @@ async def test_with_uhs_data(udp_port):
 
             # Change all tally/tally_type colors, but don't wait for results yet
             for tx_tally in sender.tallies.values():
-                for tally_type in TallyType:
-                    if tally_type == TallyType.no_tally:
-                        continue
+                for tally_type in TallyType.all():
                     sender.set_tally_color(tx_tally.id, tally_type, TallyColor.AMBER)
                 sender.set_tally_text(tx_tally.id, f'foo-{tx_tally.index}')
 
@@ -396,9 +392,7 @@ async def test_all_off_on_close(faker, udp_port):
                     rx_tally = evt_args[0]
                     assert rx_tally == tx_tally
 
-                    for ttype in TallyType:
-                        if ttype == TallyType.no_tally:
-                            continue
+                    for ttype in TallyType.all():
                         setattr(tx_tally, ttype.name, TallyColor.RED)
 
                         evt_args, evt_kwargs = await tally_listener.get()

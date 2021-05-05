@@ -83,9 +83,7 @@ async def test_with_uhs_data(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, 
         for disp in uhs500_msg_parsed.displays:
             tally = screen.tallies[disp.index]
 
-            for tally_type in TallyType:
-                if tally_type == TallyType.no_tally:
-                    continue
+            for tally_type in TallyType.all():
                 attr = tally_type.name
                 cur_value = getattr(disp, attr)
                 if cur_value == TallyColor.RED:
