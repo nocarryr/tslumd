@@ -42,6 +42,10 @@ class UmdSender(Dispatcher):
 
     Arguments:
         clients: Intitial value for :attr:`clients`
+        all_off_on_close: Initial value for :attr:`all_off_on_close`
+
+    .. versionchanged:: 0.0.4
+        The ``all_off_on_close`` parameter was added
     """
 
     screens: Dict[int, Screen]
@@ -82,11 +86,21 @@ class UmdSender(Dispatcher):
     """Set of :data:`clients <Client>` to send messages to
     """
 
-    def __init__(self, clients: Optional[Set[Client]] = None):
+    all_off_on_close: bool
+    """If ``True``, a broadcast message will be sent before shutdown to turn
+    off all tally lights in the system. (default is ``False``)
+
+    .. versionadded:: 0.0.4
+    """
+
+    def __init__(self,
+                 clients: Optional[Set[Client]] = None,
+                 all_off_on_close: Optional[bool] = False):
         self.clients = set()
         if clients is not None:
             for client in clients:
                 self.clients.add(client)
+        self.all_off_on_close = all_off_on_close
         self.screens = {}
         self.tallies = {}
         self.running = False
@@ -126,6 +140,9 @@ class UmdSender(Dispatcher):
         await self.update_queue.put((0, False))
         await self.tx_task
         self.tx_task = None
+        if self.all_off_on_close:
+            logger.debug('sending all off broadcast message')
+            await self.send_broadcast_tally(0xffff)
         self.transport.close()
         logger.info('UmdSender closed')
 

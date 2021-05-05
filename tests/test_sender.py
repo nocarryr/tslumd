@@ -369,6 +369,51 @@ async def test_queued_updates_are_separate_messages(udp_endpoint, udp_port):
                 assert len(screen.tallies) == 10
 
 @pytest.mark.asyncio
+async def test_all_off_on_close(faker, udp_port):
+    loop = asyncio.get_event_loop()
+
+    sender = UmdSender(
+        clients=[('127.0.0.1', udp_port)],
+        all_off_on_close=True,
+    )
+    receiver = UmdReceiver(hostaddr='127.0.0.1', hostport=udp_port)
+
+    add_listener = EventListener()
+    receiver.bind_async(loop, on_tally_added=add_listener.callback)
+
+    tally_listener = EventListener()
+    receiver.bind_async(loop, on_tally_updated=tally_listener.callback)
+
+    async with receiver:
+        async with sender:
+            for screen_index in range(10):
+                for i in range(10):
+                    t_id = (screen_index, i)
+                    sender.set_tally_text(t_id, f'Tally-{i}')
+                    tx_tally = sender.tallies[t_id]
+
+                    evt_args, evt_kwargs = await add_listener.get()
+                    rx_tally = evt_args[0]
+                    assert rx_tally == tx_tally
+
+                    for ttype in TallyType:
+                        if ttype == TallyType.no_tally:
+                            continue
+                        setattr(tx_tally, ttype.name, TallyColor.RED)
+
+                        evt_args, evt_kwargs = await tally_listener.get()
+                        assert getattr(rx_tally, ttype.name) == TallyColor.RED
+
+        # Sender is closed and should have broadcast "all-off"
+        _ = await asyncio.wait_for(tally_listener.get(), timeout=1)
+        while not tally_listener.empty():
+            _ = await tally_listener.get()
+        for rx_tally in receiver.tallies.values():
+            assert rx_tally.rh_tally == TallyColor.OFF
+            assert rx_tally.txt_tally == TallyColor.OFF
+            assert rx_tally.lh_tally == TallyColor.OFF
+
+@pytest.mark.asyncio
 async def test_broadcast_screen_updates(udp_endpoint, udp_port):
     transport, protocol, endpoint_port = udp_endpoint
     assert udp_port != endpoint_port
