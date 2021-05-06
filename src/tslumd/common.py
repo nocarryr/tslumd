@@ -3,12 +3,33 @@ from typing import Tuple, Iterable
 
 __all__ = ('TallyColor', 'TallyType', 'TallyState', 'MessageType', 'TallyKey')
 
-class TallyColor(enum.IntEnum):
-    """Color enum for tally indicators"""
-    OFF = 0   #: Off
-    RED = 1   #: Red
-    GREEN = 2 #: Green
-    AMBER = 3 #: Amber
+class TallyColor(enum.IntFlag):
+    """Color enum for tally indicators
+
+    Since this is an :class:`~enum.IntFlag`, its members can be combined using
+    bitwise operators, making :attr:`AMBER` a combination of
+    :attr:`RED` and :attr:`GREEN`
+
+    This allows merging one color with another
+
+    >>> from tslumd import TallyColor
+    >>> TallyColor.RED
+    <TallyColor.RED: 1>
+    >>> TallyColor.GREEN
+    <TallyColor.GREEN: 2>
+    >>> TallyColor.AMBER
+    <TallyColor.AMBER: 3>
+    >>> TallyColor.RED | TallyColor.GREEN
+    <TallyColor.AMBER: 3>
+
+
+    .. versionchanged:: 0.0.4
+        Bitwise operators
+    """
+    OFF = 0             #: Off
+    RED = 1             #: Red
+    GREEN = 2           #: Green
+    AMBER = RED | GREEN #: Amber
 
 class TallyType(enum.Enum):
     """Enum for the three tally display types in the UMD protocol
