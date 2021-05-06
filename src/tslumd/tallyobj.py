@@ -117,6 +117,62 @@ class Tally(Dispatcher):
         kw.update({attr:getattr(display, attr) for attr in cls._prop_attrs})
         return cls(display.index, **kw)
 
+    def set_color(self, tally_type: TallyType, color: TallyColor):
+        """Set the color property (or properties) for the given TallyType
+
+        Sets the of :attr:`rh_tally`, :attr:`txt_tally` or :attr:`lh_tally`
+        properties matching the :class:`~.common.TallyType` value
+
+        Arguments:
+            tally_type (TallyType): The :class:`~.common.TallyType` member(s)
+                to set. Multiple types can be specified using
+                bitwise ``|`` operators.
+            color (TallyColor): The :class:`~.common.TallyColor` to set
+
+        .. versionadded:: 0.0.4
+        """
+        for ttype in tally_type:
+            setattr(self, ttype.name, color)
+
+    def merge_color(self, tally_type: TallyType, color: TallyColor):
+        """Merge the color property (or properties) for the given TallyType
+        using the :meth:`set_color` method
+
+        Combines the existing color value with the one provided using a bitwise
+        ``|`` (or) operation
+
+        Arguments:
+            tally_type (TallyType): The :class:`~.common.TallyType` member(s)
+                to merge. Multiple types can be specified using
+                bitwise ``|`` operators.
+            color (TallyColor): The :class:`~.common.TallyColor` to merge
+
+        .. versionadded:: 0.0.4
+        """
+        for ttype in tally_type:
+            cur_color = getattr(self, ttype.name)
+            new_color = cur_color | color
+            if new_color == cur_color:
+                continue
+            self.set_color(ttype, new_color)
+
+    def merge(self, other: 'Tally', tally_type: Optional[TallyType] = TallyType.all_tally):
+        """Merge the color(s) from another Tally instance into this one using
+        the :meth:`merge_color` method
+
+        Arguments:
+            other (Tally): The Tally instance to merge with
+            tally_type (TallyType, optional): The :class:`~.common.TallyType`
+                member(s) to merge. Multiple types can be specified using
+                bitwise ``|`` operators.
+                Default is :attr:`~.common.TallyType.all_tally` (all three types)
+
+        .. versionadded:: 0.0.4
+        """
+        for ttype in tally_type:
+            color = getattr(other, ttype.name)
+            self.merge_color(ttype, color)
+
     def update(self, **kwargs) -> Set[str]:
         """Update any known properties from the given keyword-arguments
 

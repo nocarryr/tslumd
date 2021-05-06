@@ -38,6 +38,66 @@ def test_tally_display_conversion(faker):
                 assert disp == Display.from_tally(tally) == tally
                 assert Tally.from_display(disp).normalized_brightness == tally.normalized_brightness
 
+def test_color_merge():
+    t1 = Tally(0)
+
+    t1.set_color(TallyType.rh_tally | TallyType.lh_tally, TallyColor.RED)
+    assert t1.rh_tally == TallyColor.RED
+    assert t1.txt_tally == TallyColor.OFF
+    assert t1.lh_tally == TallyColor.RED
+
+    t1.set_color(TallyType.rh_tally | TallyType.lh_tally, TallyColor.GREEN)
+    assert t1.rh_tally == TallyColor.GREEN
+    assert t1.txt_tally == TallyColor.OFF
+    assert t1.lh_tally == TallyColor.GREEN
+
+    t1.merge_color(TallyType.all_tally, TallyColor.RED)
+    assert t1.rh_tally == TallyColor.AMBER
+    assert t1.txt_tally == TallyColor.RED
+    assert t1.lh_tally == TallyColor.AMBER
+
+    t1.merge_color(TallyType.all_tally, TallyColor.GREEN)
+    assert t1.rh_tally == TallyColor.AMBER
+    assert t1.txt_tally == TallyColor.AMBER
+    assert t1.lh_tally == TallyColor.AMBER
+
+    # Reset t1 to OFF, OFF, RED
+    t1.rh_tally = TallyColor.OFF
+    t1.txt_tally = TallyColor.OFF
+    t1.lh_tally = TallyColor.RED
+
+    # Another Tally with only `txt_tally` set
+    t2 = Tally(1, txt_tally=TallyColor.GREEN)
+
+    # Only `txt_tally` should change
+    t1.merge(t2, TallyType.all_tally)
+    assert t1.rh_tally == TallyColor.OFF
+    assert t1.txt_tally == TallyColor.GREEN
+    assert t1.lh_tally == TallyColor.RED
+
+    # Reset t2 to GREEN, RED, GREEN
+    # t1 is still OFF, GREEN, RED
+    t2.rh_tally = TallyColor.GREEN
+    t2.txt_tally = TallyColor.RED
+    t2.lh_tally = TallyColor.GREEN
+
+    t1.merge(t2, TallyType.rh_tally | TallyType.lh_tally)
+    assert t1.rh_tally == TallyColor.GREEN
+    assert t1.txt_tally == TallyColor.GREEN
+    assert t1.lh_tally == TallyColor.AMBER
+
+    t1.merge(t2, TallyType.all_tally)
+    assert t1.rh_tally == TallyColor.GREEN
+    assert t1.txt_tally == TallyColor.AMBER
+    assert t1.lh_tally == TallyColor.AMBER
+
+    t2.rh_tally = TallyColor.RED
+    t1.merge(t2, TallyType.all_tally)
+    assert t1.rh_tally == TallyColor.AMBER
+    assert t1.txt_tally == TallyColor.AMBER
+    assert t1.lh_tally == TallyColor.AMBER
+
+
 def test_broadcast(faker):
     for _ in range(1000):
         i = faker.pyint(max_value=0xfffe)
