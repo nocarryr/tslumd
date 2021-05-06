@@ -31,22 +31,48 @@ class TallyColor(enum.IntFlag):
     GREEN = 2           #: Green
     AMBER = RED | GREEN #: Amber
 
-class TallyType(enum.Enum):
+class TallyType(enum.IntFlag):
     """Enum for the three tally display types in the UMD protocol
+
+    Since this is an :class:`~enum.IntFlag`, its members can be combined using
+    bitwise operators. The members can then be iterated over to retrieve the
+    individual "concrete" values of :attr:`rh_tally`, :attr:`txt_tally`
+    and :attr:`lh_tally`
+
+    >>> from tslumd import TallyType
+    >>> list(TallyType.rh_tally)
+    [<TallyType.rh_tally: 1>]
+    >>> list(TallyType.rh_tally | TallyType.txt_tally)
+    [<TallyType.rh_tally: 1>, <TallyType.txt_tally: 2>]
+    >>> list(TallyType.all_tally)
+    [<TallyType.rh_tally: 1>, <TallyType.txt_tally: 2>, <TallyType.lh_tally: 4>]
+
+    .. versionchanged:: 0.0.4
+        Added support for bitwise operators and member iteration
     """
     no_tally = 0  #: No-op
     rh_tally = 1  #: "Right-hand" tally
     txt_tally = 2 #: "Text" tally
-    lh_tally = 3  #: "Left-hand" tally
+    lh_tally = 4  #: "Left-hand" tally
+    all_tally = rh_tally | txt_tally | lh_tally
+    """Combination of all tally types
+
+    .. versionadded:: 0.0.4
+    """
 
     @classmethod
     def all(cls) -> Iterable['TallyType']:
-        """Iterate over all members, excluding :attr:`no_tally`
+        """Iterate over all members, excluding :attr:`no_tally` and :attr:`all_tally`
 
         .. versionadded:: 0.0.4
         """
         for ttype in cls:
-            if ttype != TallyType.no_tally:
+            if ttype != TallyType.no_tally and ttype != TallyType.all_tally:
+                yield ttype
+
+    def __iter__(self):
+        for ttype in self.all():
+            if ttype in self:
                 yield ttype
 
 class TallyState(enum.IntFlag):
