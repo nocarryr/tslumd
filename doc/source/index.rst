@@ -12,6 +12,7 @@ Welcome to tslumd's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   protocol
    reference/index.rst
 
 Indices and tables
