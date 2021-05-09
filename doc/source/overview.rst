@@ -21,9 +21,9 @@ Tally instance as the first argument and the property names as the second:
 
     >>> from tslumd import Tally, TallyColor
     >>> def my_callback(tally: Tally, props_changed, **kwargs):
-    >>>     for name in props_changed:
-    >>>         value = getattr(tally, name)
-    >>>         print(f'my_callback: {tally!r}.{name} = {value}')
+    ...     for name in props_changed:
+    ...         value = getattr(tally, name)
+    ...         print(f'my_callback: {tally!r}.{name} = {value}')
     >>> tally = Tally(0)
     >>> # bind `my_callback` to the `on_change` event
     >>> tally.bind(on_change=my_callback)
@@ -40,8 +40,8 @@ One can also subscribe to any of the properties individually:
 
     >>> from tslumd import Tally, TallyColor
     >>> def my_callback(tally: Tally, value, **kwargs):
-    >>>     prop = kwargs['property']
-    >>>     print(f'my_callback: {tally!r}.{prop.name} = {value}')
+    ...     prop = kwargs['property']
+    ...     print(f'my_callback: {tally!r}.{prop.name} = {value}')
     >>> tally = Tally(0)
     >>> # bind `my_callback` to the `on_change` event
     >>> tally.bind(text=my_callback)
