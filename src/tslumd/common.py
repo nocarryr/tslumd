@@ -31,6 +31,14 @@ class TallyColor(enum.IntFlag):
     GREEN = 2           #: Green
     AMBER = RED | GREEN #: Amber
 
+    def __str__(self):
+        return self.name
+
+    def __format__(self, format_spec):
+        if format_spec == '':
+            return str(self)
+        return super().__format__(format_spec)
+
 class TallyType(enum.IntFlag):
     """Enum for the three tally display types in the UMD protocol
 
