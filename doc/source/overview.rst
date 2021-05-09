@@ -31,7 +31,7 @@ Tally instance as the first argument and the property names as the second:
     >>> tally.rh_tally
     <TallyColor.OFF: 0>
     >>> tally.rh_tally = TallyColor.RED
-    my_callback: <Tally: (0 - "")>.lh_tally = RED
+    my_callback: <Tally: (0 - "")>.rh_tally = RED
 
 
 One can also subscribe to any of the properties individually:
