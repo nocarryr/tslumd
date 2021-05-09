@@ -49,18 +49,16 @@ class TallyTypeGroup:
 
 class AnimatedSender(UmdSender):
     tally_groups: Dict[TallyType, TallyTypeGroup]
-    def __init__(self, clients=None, num_tallies=8, update_interval=.5, screen=1):
+    def __init__(self, clients=None, num_tallies=8, update_interval=.5, screen=1, all_off_on_close=False):
         self.num_tallies = num_tallies
         self.update_interval = update_interval
-        super().__init__(clients)
+        super().__init__(clients, all_off_on_close)
         self.screen = self.get_or_create_screen(screen)
         for i in range(self.num_tallies):
             self.screen.add_tally(i, text=string.ascii_uppercase[i])
 
         self.tally_groups = {}
-        for tally_type in TallyType:
-            if tally_type == TallyType.no_tally:
-                continue
+        for tally_type in TallyType.all():
             tg = TallyTypeGroup(tally_type, self.num_tallies)
             self.tally_groups[tally_type] = tg
 
@@ -124,7 +122,7 @@ class AnimatedSender(UmdSender):
             self.cur_index = start_ix
 
     def animate_horizontal(self):
-        tally_types = [t for t in TallyType]
+        tally_types = [t for t in TallyType if t != TallyType.all_tally]
         while tally_types[0] != self.cur_group:
             t = tally_types.pop(0)
             tally_types.append(t)
@@ -139,7 +137,13 @@ class AnimatedSender(UmdSender):
                 color = TallyColor.OFF
             tg.tally_colors[self.cur_index] = color
         try:
-            t = TallyType(self.cur_group.value+1)
+            if self.cur_group.value == 0:
+                v = 1
+            else:
+                v = self.cur_group.value * 2
+                if v > TallyType.all_tally.value:
+                    raise ValueError()
+            t = TallyType(v)
             self.cur_group = t
         except ValueError:
             self.cur_index += 1
@@ -154,7 +158,7 @@ class AnimatedSender(UmdSender):
         def update_tallies():
             changed = set()
             for tg in self.tally_groups.values():
-                _changed = tg.update_tallies(self.tallies.values())
+                _changed = tg.update_tallies(self.screen.tallies.values())
                 changed |= set(_changed)
             return changed
 
@@ -177,6 +181,9 @@ def main():
     )
     p.add_argument(
         '-n', '--num-tallies', dest='num_tallies', type=int, default=8,
+    )
+    p.add_argument(
+        '-a', '--all-of-on-close', dest='all_off_on_close', action='store_true',
     )
     p.add_argument(
         '-i', '--interval', dest='update_interval', type=float, default=.5,
