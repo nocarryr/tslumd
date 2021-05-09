@@ -17,35 +17,39 @@ When receiving, the Tally object will emit an
 :event:`~tslumd.tallyobj.Tally.on_change` event on any change of state with the
 Tally instance as the first argument and the property names as the second:
 
->>> from tslumd import Tally, TallyColor
->>> def my_callback(tally: Tally, props_changed, **kwargs):
->>>     for name in props_changed:
->>>         value = getattr(tally, name)
->>>         print(f'my_callback: {tally!r}.{name} = {value}')
->>> tally = Tally(0)
->>> # bind `my_callback` to the `on_change` event
->>> tally.bind(on_change=my_callback)
->>> # rh_tally is initialized to "OFF"
->>> tally.rh_tally
-<TallyColor.OFF: 0>
->>> tally.rh_tally = TallyColor.RED
-my_callback: <Tally: (0 - "")>.lh_tally = RED
+.. doctest::
+
+    >>> from tslumd import Tally, TallyColor
+    >>> def my_callback(tally: Tally, props_changed, **kwargs):
+    >>>     for name in props_changed:
+    >>>         value = getattr(tally, name)
+    >>>         print(f'my_callback: {tally!r}.{name} = {value}')
+    >>> tally = Tally(0)
+    >>> # bind `my_callback` to the `on_change` event
+    >>> tally.bind(on_change=my_callback)
+    >>> # rh_tally is initialized to "OFF"
+    >>> tally.rh_tally
+    <TallyColor.OFF: 0>
+    >>> tally.rh_tally = TallyColor.RED
+    my_callback: <Tally: (0 - "")>.lh_tally = RED
 
 
 One can also subscribe to any of the properties individually:
 
->>> from tslumd import Tally, TallyColor
->>> def my_callback(tally: Tally, value, **kwargs):
->>>     prop = kwargs['property']
->>>     print(f'my_callback: {tally!r}.{prop.name} = {value}')
->>> tally = Tally(0)
->>> # bind `my_callback` to the `on_change` event
->>> tally.bind(text=my_callback)
->>> # does not reach the callback
->>> tally.rh_tally = TallyColor.RED
->>> # but this does
->>> tally.text = 'foo'
-my_callback: <Tally: (0 - "")>.text = foo
+.. doctest::
+
+    >>> from tslumd import Tally, TallyColor
+    >>> def my_callback(tally: Tally, value, **kwargs):
+    >>>     prop = kwargs['property']
+    >>>     print(f'my_callback: {tally!r}.{prop.name} = {value}')
+    >>> tally = Tally(0)
+    >>> # bind `my_callback` to the `on_change` event
+    >>> tally.bind(text=my_callback)
+    >>> # does not reach the callback
+    >>> tally.rh_tally = TallyColor.RED
+    >>> # but this does
+    >>> tally.text = 'foo'
+    my_callback: <Tally: (0 - "")>.text = foo
 
 
 .. _screen-object:

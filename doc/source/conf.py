@@ -12,8 +12,10 @@
 #
 import os
 import sys
+from pathlib import Path
+HERE = Path(__file__).resolve().parent
 # sys.path.insert(0, os.path.abspath('.'))
-sys.path.append(os.path.abspath('./ext'))
+sys.path.append(str(HERE / 'ext'))
 
 import importlib.metadata
 
@@ -58,6 +60,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     # 'sphinx_autodoc_typehints',
+    'sphinx.ext.doctest',
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
