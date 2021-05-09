@@ -14,7 +14,7 @@ The primary object used for sending or receiving tally information is the
 :class:`~tslumd.tallyobj.Tally` object.
 
 When receiving, the Tally object will emit an
-:event:`~tslumd.tallyobj.Tally.on_change` event on any change of state with the
+:event:`~tslumd.tallyobj.Tally.on_update` event on any change of state with the
 Tally instance as the first argument and the property names as the second:
 
 .. doctest::
@@ -25,8 +25,8 @@ Tally instance as the first argument and the property names as the second:
     ...         value = getattr(tally, name)
     ...         print(f'my_callback: {tally!r}.{name} = {value}')
     >>> tally = Tally(0)
-    >>> # bind `my_callback` to the `on_change` event
-    >>> tally.bind(on_change=my_callback)
+    >>> # bind `my_callback` to the `on_update` event
+    >>> tally.bind(on_update=my_callback)
     >>> # rh_tally is initialized to "OFF"
     >>> tally.rh_tally
     <TallyColor.OFF: 0>
@@ -43,7 +43,7 @@ One can also subscribe to any of the properties individually:
     ...     prop = kwargs['property']
     ...     print(f'my_callback: {tally!r}.{prop.name} = {value}')
     >>> tally = Tally(0)
-    >>> # bind `my_callback` to the `on_change` event
+    >>> # bind `my_callback` to the `text` property
     >>> tally.bind(text=my_callback)
     >>> # does not reach the callback
     >>> tally.rh_tally = TallyColor.RED
