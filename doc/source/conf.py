@@ -17,10 +17,6 @@ HERE = Path(__file__).resolve().parent
 # sys.path.insert(0, os.path.abspath('.'))
 sys.path.append(str(HERE / 'ext'))
 
-try:
-    import importlib.metadata
-except ImportError:
-    importlib.metadata = None
 
 # -- Project information -----------------------------------------------------
 
@@ -29,9 +25,10 @@ copyright = '2021, Matthew Reid'
 author = 'Matthew Reid'
 
 # The full version, including alpha/beta/rc tags
-if importlib.metadata is not None:
+try:
+    import importlib.metadata
     release = importlib.metadata.version(project)
-else:
+except ImportError:
     release = '0.0.0'
 version = release
 
