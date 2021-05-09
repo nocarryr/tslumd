@@ -42,14 +42,16 @@ One can also subscribe to any of the properties individually:
     >>> def my_callback(tally: Tally, value, **kwargs):
     ...     prop = kwargs['property']
     ...     print(f'my_callback: {tally!r}.{prop.name} = {value}')
-    >>> tally = Tally(0)
+    >>> tally = Tally(0, text='foo')
+    >>> tally
+    <Tally: (0 - "foo")>
     >>> # bind `my_callback` to the `text` property
     >>> tally.bind(text=my_callback)
     >>> # does not reach the callback
     >>> tally.rh_tally = TallyColor.RED
     >>> # but this does
-    >>> tally.text = 'foo'
-    my_callback: <Tally: (0 - "")>.text = foo
+    >>> tally.text = 'bar'
+    my_callback: <Tally: (0 - "bar")>.text = bar
 
 
 .. _screen-object:
