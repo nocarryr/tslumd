@@ -1,6 +1,13 @@
 tslumd
 ======
 
+.. image:: https://badge.fury.io/py/tslumd.svg
+    :target: https://badge.fury.io/py/tslumd
+.. image:: https://img.shields.io/github/workflow/status/nocarryr/tslumd/Python%20package
+    :alt: GitHub Workflow Status
+.. image:: https://img.shields.io/coveralls/github/nocarryr/tslumd
+    :alt: Coveralls
+
 Client and Server for TSLUMD Tally Protocols
 
 Description
