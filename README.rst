@@ -16,7 +16,8 @@ Description
 This project is intended to serve only as a library for other applications
 wishing to send or receive tally information using the
 `UMDv5.0 Protocol`_ by `TSL Products`_.  It is written in pure Python and
-utilizes :mod:`asyncio` for communication.
+utilizes `asyncio <https://docs.python.org/3.8/library/asyncio.html>`_ for
+communication.
 
 Links
 -----
