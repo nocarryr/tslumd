@@ -6,7 +6,7 @@ except ImportError: # pragma: no cover
 import asyncio
 import socket
 import argparse
-from typing import Dict, Tuple, Set, Optional, Sequence
+from typing import Dict, Tuple, Set, Optional, Sequence, Iterable
 
 from pydispatch import Dispatcher, Property, DictProperty, ListProperty
 
@@ -94,7 +94,7 @@ class UmdSender(Dispatcher):
     """
 
     def __init__(self,
-                 clients: Optional[Set[Client]] = None,
+                 clients: Optional[Iterable[Client]] = None,
                  all_off_on_close: Optional[bool] = False):
         self.clients = set()
         if clients is not None:
