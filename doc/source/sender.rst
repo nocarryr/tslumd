@@ -4,8 +4,16 @@ Sender
 ======
 
 The :class:`UmdSender` class is used to send tally information as UMD packets
-to clients on the network. The remote addresses can be specified on initialization
-by giving a Sequence of tuples containing the address and port (:data:`Client`).
+to clients on the network.
+
+The remote addresses can be specified on initialization by giving a Sequence of
+tuples containing the address and port (:data:`Client`). The
+:attr:`UmdSender.clients` container may also be modified on the instance if
+clients need to be added or removed while running.
+
+.. todo::
+    The runtime behavior for manipulating :attr:`UmdSender.clients` has not been
+    tested yet
 
 
 Starting and Stopping
@@ -43,6 +51,27 @@ in an :keyword:`async with` block
     >>> loop.run_until_complete(run())
 
 
+Object Access
+-------------
+
+UmdSender creates :ref:`Screens <screen-object>` and
+:ref:`Tallies <tally-object>` using one of the following methods:
+
+* :meth:`UmdSender.add_tally`
+* :meth:`UmdSender.get_or_create_tally`
+* :meth:`UmdSender.get_or_create_screen`
+
+Additionally, it will create objects as needed when one of the
+`Shortcut Methods`_ are used.
+
+Screens are stored in the :attr:`UmdSender.screens` dictionary using their
+:attr:`~tslumd.tallyobj.Screen.index` as keys.
+
+While each Screen object contains its own Tally instances, UmdSender stores
+all Tally objects from all Screens in its own :attr:`~UmdSender.tallies`
+dictionary by their :attr:`Tally.id <tslumd.tallyobj.Tally.id>` (:term:`TallyKey`)
+
+
 Sending Tally
 -------------
 
@@ -54,7 +83,13 @@ and update tallies without needing to operate on :class:`~tslumd.tallyobj.Tally`
 objects directly.
 
 All of these methods operate using a :term:`TallyKey` to specify the
-:ref:`Screen <screen-object>` and :ref:`Tally <tally-object>`
+:ref:`Screen <screen-object>` and :ref:`Tally <tally-object>`.
+
+For :meth:`UmdSender.set_tally_text`, the :term:`TallyKey` and the text are the
+only two arguments.
+
+For :meth:`UmdSender.set_tally_color`, the :term:`TallyKey`, :term:`TallyType`
+and :term:`TallyColor` arguments are used.
 
 .. doctest:: UmdSender-shortcuts
 
@@ -103,3 +138,20 @@ object directly.
     >>> cam2_tally.txt_tally = TallyColor.GREEN
     >>> pprint(sender.tallies[cam2_tally.id].txt_tally)
     <TallyColor.GREEN: 2>
+
+
+Tally States on Shutdown
+------------------------
+
+In some cases, it may be desirable for all tally lights to be remain in their
+last state when UmdSender closes. It could also be preferable to ensure all
+of them are "off".
+
+This behavior can be set for either case by setting :attr:`UmdSender.all_off_on_close`
+either upon creation (as an init argument), or by setting the instance attribute
+(must be done before :meth:`~UmdSender.close` is called).
+
+The default behavior is to leave all tallies in their last state. If
+:attr:`~UmdSender.all_off_on_close` is set True however, messages will be
+sent for all tallies across all screens to be "OFF" right before
+shutdown.
