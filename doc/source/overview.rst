@@ -90,6 +90,16 @@ Glossary
         :data:`~tslumd.common.TallyKey` is a 2-tuple of integers and is available
         as the :attr:`Tally.id`.
 
+    TallyType
+        :class:`~tslumd.common.TallyType` is an enum used to aid in mapping
+        the three Tally :ref:`Tally Indicators <indicators>` to the
+        :attr:`Tally.lh_tally`, :attr:`Tally.txt_tally` and
+        :attr:`Tally.rh_tally` attributes
+
+    TallyColor
+        :class:`~tslumd.common.TallyColor` is an enum defining the four
+        allowable colors for an :ref:`indicator <indicators>` (including "off")
+
 
 .. _Observer Pattern: https://en.wikipedia.org/wiki/Observer_pattern
 .. _python-dispatch: https://pypi.org/project/python-dispatch/

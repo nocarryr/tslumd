@@ -59,9 +59,9 @@ class TallyType(enum.IntFlag):
         Added support for bitwise operators and member iteration
     """
     no_tally = 0  #: No-op
-    rh_tally = 1  #: "Right-hand" tally
-    txt_tally = 2 #: "Text" tally
-    lh_tally = 4  #: "Left-hand" tally
+    rh_tally = 1  #: :term:`Right-hand tally <rh_tally>`
+    txt_tally = 2 #: :term:`Text tally <txt_tally>`
+    lh_tally = 4  #: :term:`Left-hand tally <lh_tally>`
     all_tally = rh_tally | txt_tally | lh_tally
     """Combination of all tally types
 

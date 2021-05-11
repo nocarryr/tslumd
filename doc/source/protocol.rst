@@ -40,6 +40,8 @@ A message packet for a single Screen can contain information for multiple
 Displays with the only limitation being the size of the packet itself (2048 bytes).
 
 
+.. _indicators:
+
 Indicators
 ^^^^^^^^^^
 

@@ -15,9 +15,9 @@ class Tally(Dispatcher):
     """A single tally object
 
     Properties:
-        rh_tally (TallyColor): State of the "right-hand" tally indicator
-        txt_tally (TallyColor): State of the "text" tally indicator
-        lh_tally (TallyColor): State of the "left-hand" tally indicator
+        rh_tally (TallyColor): State of the :term:`right-hand tally <rh_tally>` indicator
+        txt_tally (TallyColor): State of the :term:`text tally <txt_tally>` indicator
+        lh_tally (TallyColor): State of the :term:`left-hand tally <lh_tally>` indicator
         brightness (int): Tally indicator brightness from 0 to 3
         text (str): Text to display
         control (bytes): Any control data received for the tally indicator
