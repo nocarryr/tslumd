@@ -52,10 +52,8 @@ in the :attr:`~UmdReceiver.screens` dictionary using their
 :attr:`~tslumd.tallyobj.Screen.index` as keys.
 
 While each Screen object contains its own Tally instances, the Receiver stores
-all Tally objects from all Screens in its own
-:attr:`~UmdReceiver.tallies` dictionary
-using a :data:`~tslumd.common.TallyKey`, which is a combination of the Screen
-index and Tally index. (also used as the :attr:`Tally.id <tslumd.tallyobj.Tally.id>`).
+all Tally objects from all Screens in its own :attr:`~UmdReceiver.tallies`
+dictionary by their :attr:`Tally.id <tslumd.tallyobj.Tally.id>` (:term:`TallyKey`)
 
 
 Events
