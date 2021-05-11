@@ -76,6 +76,21 @@ This can reduce the amount of code and callbacks when handling multiple tallies.
 When sending, Tally objects are created by using either the
 :meth:`Screen.add_tally` and :meth:`Screen.get_or_create_tally` methods.
 
+
+Glossary
+--------
+
+.. glossary::
+
+    TallyKey
+        Combination of :attr:`Screen.index` and :attr:`Tally.index` used to
+        uniquely identify a single tally (or :term:`Display`) within a single
+        :term:`Screen`.
+
+        :data:`~tslumd.common.TallyKey` is a 2-tuple of integers and is available
+        as the :attr:`Tally.id`.
+
+
 .. _Observer Pattern: https://en.wikipedia.org/wiki/Observer_pattern
 .. _python-dispatch: https://pypi.org/project/python-dispatch/
 .. _subscribing to events: https://python-dispatch.readthedocs.io/en/latest/dispatcher.html#usage
