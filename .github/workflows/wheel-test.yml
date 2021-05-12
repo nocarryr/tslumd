@@ -62,7 +62,7 @@ jobs:
         pip uninstall -y tslumd
         pip install dist/*.tar.gz
     - name: Test built sdist
-      run: py.test
+      run: py.test -o testpaths=tests
 
   deploy:
     needs: test
