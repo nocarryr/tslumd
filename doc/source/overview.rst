@@ -14,6 +14,56 @@ Tally Object
 The primary object used for sending or receiving tally information is the
 :class:`Tally` object.
 
+Indicator Properties
+^^^^^^^^^^^^^^^^^^^^
+
+It has properties which hold the
+:class:`color <tslumd.common.TallyColor>` for the three :ref:`indicator <indicators>`
+values (:attr:`Tally.lh_tally`, :attr:`Tally.txt_tally` and :attr:`Tally.rh_tally`)
+among others.
+
+These are :class:`~pydispatch.properties.Property` objects which act as observable
+:term:`descriptors <descriptor>`, meaning callbacks can be invoked when their
+values change.
+
+The :meth:`Tally.set_color` and :meth:`Tally.get_color` methods can also be used
+to get and set the values.
+
+
+Container Support
+^^^^^^^^^^^^^^^^^
+
+The indicator properties can be retrieved and assigned using :ref:`subscription <subscriptions>`
+notation (``color = tally[key]``, ``tally[key] = color``). In this form, the
+expected key and value types match that of :meth:`Tally.set_color` and the return
+values match the description in :meth:`Tally.get_color`.
+
+The example shown in :meth:`Tally.get_color` could be rewritten as:
+
+.. doctest::
+
+    >>> from tslumd import Tally
+    >>> tally = Tally(0)
+    >>> tally['rh_tally']
+    <TallyColor.OFF: 0>
+    >>> tally['rh_tally'] = 'red'
+    >>> tally['rh_tally']
+    <TallyColor.RED: 1>
+    >>> tally['txt_tally'] = 'red'
+    >>> tally['rh_tally|txt_tally']
+    <TallyColor.RED: 1>
+    >>> tally['all']
+    <TallyColor.RED: 1>
+    >>> tally['lh_tally'] = 'green'
+    >>> tally['lh_tally']
+    <TallyColor.GREEN: 2>
+    >>> tally['all']
+    <TallyColor.AMBER: 3>
+
+
+Events
+^^^^^^
+
 When receiving, the Tally object will emit an
 :event:`Tally.on_update` event on any change of state with the
 Tally instance as the first argument and the property names as the second:

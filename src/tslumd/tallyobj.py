@@ -3,11 +3,14 @@ try:
 except ImportError: # pragma: no cover
     import logging
     logger = logging.getLogger(__name__)
-from typing import Dict, Set, Tuple, Iterable, Optional
+from typing import Dict, Set, Tuple, Iterable, Optional, Union
 
 from pydispatch import Dispatcher, Property
 
 from tslumd import MessageType, TallyType, TallyColor, TallyKey
+
+StrOrTallyType = Union[str, TallyType]
+StrOrTallyColor = Union[str, TallyColor]
 
 __all__ = ('Tally', 'Screen')
 
@@ -35,6 +38,9 @@ class Tally(Dispatcher):
 
     .. versionadded:: 0.0.2
         The :event:`on_control` event
+
+    .. versionchanged:: 0.0.5
+        Added container emulation
     """
     screen: Optional['Screen']
     """The parent :class:`Screen` this tally belongs to
@@ -117,22 +123,88 @@ class Tally(Dispatcher):
         kw.update({attr:getattr(display, attr) for attr in cls._prop_attrs})
         return cls(display.index, **kw)
 
-    def set_color(self, tally_type: TallyType, color: TallyColor):
+    def set_color(self, tally_type: StrOrTallyType, color: StrOrTallyColor):
         """Set the color property (or properties) for the given TallyType
 
-        Sets the of :attr:`rh_tally`, :attr:`txt_tally` or :attr:`lh_tally`
-        properties matching the :class:`~.common.TallyType` value
+        Sets the :attr:`rh_tally`, :attr:`txt_tally` or :attr:`lh_tally`
+        properties matching the :class:`~.common.TallyType` value(s).
+
+        If the given tally_type is a combination of tally types, all of the
+        matched attributes will be set to the given color.
 
         Arguments:
-            tally_type (TallyType): The :class:`~.common.TallyType` member(s)
+            tally_type (TallyType or str): The :class:`~.common.TallyType` member(s)
                 to set. Multiple types can be specified using
                 bitwise ``|`` operators.
-            color (TallyColor): The :class:`~.common.TallyColor` to set
+
+                If the argument is a string, it should be formatted as shown in
+                :meth:`.TallyType.from_str`
+            color (TallyColor or str): The :class:`~.common.TallyColor` to set, or the
+                name as a string
+
+
+        >>> from tslumd import Tally, TallyType, TallyColor
+        >>> tally = Tally(0)
+        >>> tally.set_color(TallyType.rh_tally, TallyColor.RED)
+        >>> tally.rh_tally
+        <TallyColor.RED: 1>
+        >>> tally.set_color('lh_tally', 'green')
+        >>> tally.lh_tally
+        <TallyColor.GREEN: 2>
+        >>> tally.set_color('rh_tally|txt_tally', 'green')
+        >>> tally.rh_tally
+        <TallyColor.GREEN: 2>
+        >>> tally.txt_tally
+        <TallyColor.GREEN: 2>
+        >>> tally.set_color('all', 'off')
+        >>> tally.rh_tally
+        <TallyColor.OFF: 0>
+        >>> tally.txt_tally
+        <TallyColor.OFF: 0>
+        >>> tally.lh_tally
+        <TallyColor.OFF: 0>
 
         .. versionadded:: 0.0.4
+
+        .. versionchanged:: 0.0.5
+            Allow string arguments and multiple tally_type members
         """
-        for ttype in tally_type:
-            setattr(self, ttype.name, color)
+        self[tally_type] = color
+
+    def get_color(self, tally_type: StrOrTallyType) -> TallyColor:
+        """Get the color of the given tally_type
+
+        If tally_type is a combination of tally types, the color returned will
+        be a combination all of the matched color properties.
+
+        Arguments:
+            tally_type (TallyType or str): :class:`~.common.TallyType` member(s)
+                to get the color values from.
+
+                If the argument is a string, it should be formatted as shown in
+                :meth:`.TallyType.from_str`
+
+
+        >>> tally = Tally(0)
+        >>> tally.get_color('rh_tally')
+        <TallyColor.OFF: 0>
+        >>> tally.set_color('rh_tally', 'red')
+        >>> tally.get_color('rh_tally')
+        <TallyColor.RED: 1>
+        >>> tally.set_color('txt_tally', 'red')
+        >>> tally.get_color('rh_tally|txt_tally')
+        <TallyColor.RED: 1>
+        >>> tally.get_color('all')
+        <TallyColor.RED: 1>
+        >>> tally.set_color('lh_tally', 'green')
+        >>> tally.get_color('lh_tally')
+        <TallyColor.GREEN: 2>
+        >>> tally.get_color('all')
+        <TallyColor.AMBER: 3>
+
+        .. versionadded:: 0.0.5
+        """
+        return self[tally_type]
 
     def merge_color(self, tally_type: TallyType, color: TallyColor):
         """Merge the color property (or properties) for the given TallyType
@@ -150,11 +222,11 @@ class Tally(Dispatcher):
         .. versionadded:: 0.0.4
         """
         for ttype in tally_type:
-            cur_color = getattr(self, ttype.name)
+            cur_color = self[ttype]
             new_color = cur_color | color
             if new_color == cur_color:
                 continue
-            self.set_color(ttype, new_color)
+            self[ttype] = new_color
 
     def merge(self, other: 'Tally', tally_type: Optional[TallyType] = TallyType.all_tally):
         """Merge the color(s) from another Tally instance into this one using
@@ -170,7 +242,7 @@ class Tally(Dispatcher):
         .. versionadded:: 0.0.4
         """
         for ttype in tally_type:
-            color = getattr(other, ttype.name)
+            color = other[ttype]
             self.merge_color(ttype, color)
 
     def update(self, **kwargs) -> Set[str]:
@@ -249,6 +321,27 @@ class Tally(Dispatcher):
         if prop.name == 'brightness':
             self.normalized_brightness = value / 3
         self.emit('on_update', self, set([prop.name]))
+
+    def __getitem__(self, key: StrOrTallyType) -> TallyColor:
+        if not isinstance(key, TallyType):
+            key = TallyType.from_str(key)
+        if key.is_iterable:
+            color = TallyColor.OFF
+            for tt in key:
+                color |= getattr(self, tt.name)
+            return color
+        return getattr(self, key.name)
+
+    def __setitem__(self, key: StrOrTallyType, value: StrOrTallyColor):
+        if not isinstance(key, TallyType):
+            key = TallyType.from_str(key)
+        if not isinstance(value, TallyColor):
+            value = TallyColor.from_str(value)
+        if key.is_iterable:
+            for tt in key:
+                setattr(self, tt.name, value)
+        else:
+            setattr(self, key.name, value)
 
     def __eq__(self, other):
         if not isinstance(other, Tally):

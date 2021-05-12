@@ -99,6 +99,18 @@ class TallyType(enum.IntFlag):
     .. versionadded:: 0.0.4
     """
 
+    @property
+    def is_iterable(self) -> bool:
+        """Returns ``True`` if this is a combination of multiple members
+
+        (meaning it must be iterated over)
+
+        .. versionadded:: 0.0.5
+        """
+        if self == TallyType.all_tally:
+            return True
+        return self.name is None
+
     @classmethod
     def all(cls) -> Iterable['TallyType']:
         """Iterate over all members, excluding :attr:`no_tally` and :attr:`all_tally`
