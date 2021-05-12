@@ -56,7 +56,7 @@ jobs:
     - name: Install wheel
       run: pip install dist/*.whl
     - name: Test built wheel
-      run: py.test
+      run: py.test -o testpaths=tests
     - name: Install sdist
       run: |
         pip uninstall -y tslumd
