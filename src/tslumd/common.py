@@ -31,6 +31,37 @@ class TallyColor(enum.IntFlag):
     GREEN = 2           #: Green
     AMBER = RED | GREEN #: Amber
 
+    @staticmethod
+    def from_str(s: str) -> 'TallyColor':
+        """Return the member matching the given name (case-insensitive)
+
+        >>> TallyColor.from_str('RED')
+        <TallyColor.RED: 1>
+        >>> TallyColor.from_str('green')
+        <TallyColor.GREEN: 2>
+        >>> TallyColor.from_str('Amber')
+        <TallyColor.AMBER: 3>
+
+        .. versionadded:: 0.0.5
+        """
+        return getattr(TallyColor, s.upper())
+
+    def to_str(self) -> str:
+        """The member name as a string
+
+        >>> TallyColor.RED.to_str()
+        'RED'
+        >>> TallyColor.GREEN.to_str()
+        'GREEN'
+        >>> TallyColor.AMBER.to_str()
+        'AMBER'
+        >>> (TallyColor.RED | TallyColor.GREEN).to_str()
+        'AMBER'
+
+        .. versionadded:: 0.0.5
+        """
+        return self.name
+
     def __str__(self):
         return self.name
 
@@ -77,6 +108,54 @@ class TallyType(enum.IntFlag):
         for ttype in cls:
             if ttype != TallyType.no_tally and ttype != TallyType.all_tally:
                 yield ttype
+
+    @staticmethod
+    def from_str(s: str) -> 'TallyType':
+        """Create an instance from a string of member name(s)
+
+        The string can be a single member or multiple member names separated by
+        a "|". For convenience, the names may be shortened by omitting the
+        ``"_tally"`` portion from the end ("rh" == "rh_tally", etc)
+
+        >>> TallyType.from_str('rh_tally')
+        <TallyType.rh_tally: 1>
+        >>> TallyType.from_str('rh|txt_tally')
+        <TallyType.txt_tally|rh_tally: 3>
+        >>> TallyType.from_str('rh|txt|lh')
+        <TallyType.all_tally: 7>
+        >>> TallyType.from_str('all')
+        <TallyType.all_tally: 7>
+
+        .. versionadded:: 0.0.5
+        """
+        if '|' in s:
+            result = TallyType.no_tally
+            for name in s.split('|'):
+                result |= TallyType.from_str(name)
+            return result
+        s = s.lower()
+        if not s.endswith('_tally'):
+            s = f'{s}_tally'
+        return getattr(TallyType, s)
+
+    def to_str(self) -> str:
+        """Create a string representation suitable for use in :meth:`from_str`
+
+        >>> tt = TallyType.rh_tally
+        >>> tt.to_str()
+        'rh_tally'
+        >>> tt |= TallyType.txt_tally
+        >>> tt.to_str()
+        'rh_tally|txt_tally'
+        >>> tt |= TallyType.lh_tally
+        >>> tt.to_str()
+        'all_tally'
+
+        .. versionadded:: 0.0.5
+        """
+        if self.name is None:
+            return '|'.join((obj.name for obj in self))
+        return self.name
 
     def __iter__(self):
         for ttype in self.all():
