@@ -11,9 +11,9 @@ tuples containing the address and port (:data:`Client`). The
 :attr:`UmdSender.clients` container may also be modified on the instance if
 clients need to be added or removed while running.
 
-.. todo::
-    The runtime behavior for manipulating :attr:`UmdSender.clients` has not been
-    tested yet
+.. note::
+    Modifying :attr:`UmdSender.clients` is not a thread-safe operation and should
+    only be done from within the same thread the instance belongs to.
 
 
 Starting and Stopping

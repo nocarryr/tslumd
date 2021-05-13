@@ -438,6 +438,66 @@ async def test_disp_control(faker, udp_port):
             assert rx_tally == tx_tally
 
 @pytest.mark.asyncio
+async def test_clients_modified_during_runtime(udp_port, udp_port0):
+    loop = asyncio.get_event_loop()
+
+    sender = UmdSender()
+    receiver1 = UmdReceiver(hostaddr='127.0.0.1', hostport=udp_port)
+    receiver2 = UmdReceiver(hostaddr='127.0.0.1', hostport=udp_port0)
+
+    add_listener1 = EventListener()
+    add_listener2 = EventListener()
+    tally_listener1 = EventListener()
+    tally_listener2 = EventListener()
+
+    async def drain_listeners():
+        async def drain(listener):
+            while not listener.empty():
+                await listener.get()
+        coros = [
+            drain(add_listener1),
+            drain(add_listener2),
+            drain(tally_listener1),
+            drain(tally_listener2),
+        ]
+        await asyncio.gather(*coros)
+
+    receiver1.bind_async(loop,
+        on_tally_added=add_listener1.callback,
+        on_tally_updated=tally_listener1.callback,
+    )
+    receiver2.bind_async(loop,
+        on_tally_added=add_listener2.callback,
+        on_tally_updated=tally_listener2.callback,
+    )
+
+    screen_index = 1
+
+    async with receiver1:
+        async with receiver2:
+            async with sender:
+                # Add 10 tallies and add the first receiver to clients after the third one
+                for i in range(10):
+                    t_id = (screen_index, i)
+                    sender.set_tally_text(t_id, f'Tally {i}')
+                    if i == 2:
+                        sender.clients.add(('127.0.0.1', udp_port))
+
+                # Update the tallies and add the second receiver after the third one
+                for i in range(10):
+                    t_id = (screen_index, i)
+                    tx_tally = sender.tallies[t_id]
+                    sender.set_tally_color(t_id, 'rh|lh', 'red')
+                    if i == 2:
+                        sender.clients.add(('127.0.0.1', udp_port0))
+
+                # Wait for a full update then allow the messages to come in
+                await asyncio.sleep(sender.tx_interval)
+                await drain_listeners()
+                assert receiver1.tallies == receiver2.tallies == sender.tallies
+
+
+@pytest.mark.asyncio
 async def test_queued_updates_are_separate_messages(udp_endpoint, udp_port):
     transport, protocol, endpoint_port = udp_endpoint
     assert udp_port != endpoint_port
