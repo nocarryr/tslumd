@@ -10,7 +10,7 @@ class EventListener:
     def __init__(self):
         self.results = asyncio.Queue()
     async def get(self):
-        r = await self.results.get()
+        r = await asyncio.wait_for(self.results.get(), 1)
         self.results.task_done()
         return r
     def empty(self):
@@ -120,6 +120,124 @@ async def test_with_uhs_data(udp_port):
             for tx_tally in sender.tallies.values():
                 rx_tally = receiver.tallies[tx_tally.id]
                 assert rx_tally == tx_tally
+
+@pytest.mark.asyncio
+async def test_tally_type_variations(udp_port):
+
+    loop = asyncio.get_event_loop()
+
+    sender = UmdSender(clients=[('127.0.0.1', udp_port)])
+    receiver = UmdReceiver(hostaddr='127.0.0.1', hostport=udp_port)
+
+    evt_listener = EventListener()
+    receiver.bind_async(loop, on_tally_added=evt_listener.callback)
+
+    tally_listener = EventListener()
+    receiver.bind_async(loop, on_tally_updated=tally_listener.callback)
+
+    tally_type_strs = ('rh', 'txt', 'lh')
+    tally_types = (TallyType.rh_tally, TallyType.txt_tally, TallyType.lh_tally)
+
+
+    def get_tally_colors(tally):
+        d = {}
+        for tt in tally_types:
+            d[tt] = tally[tt]
+        return d
+
+    async def wait_for_rx(tally_type):
+        tally_types = set()
+        if not isinstance(tally_type, TallyType):
+            tally_type = TallyType.from_str(tally_type)
+        if tally_type.is_iterable:
+            for tt in tally_type:
+                tally_types.add(tt.name)
+        else:
+            tally_types.add(tally_type.name)
+        props = set()
+        for _ in range(len(tally_types)):
+            evt_args, evt_kwargs = await tally_listener.get()
+            props |= evt_args[1]
+            if props == tally_types:
+                break
+        assert props == tally_types
+
+    screen_index = 1
+
+    async with receiver:
+        async with sender:
+
+            for i in range(10):
+                t_id = (screen_index, i)
+                expected = {key:TallyColor.OFF for key in tally_types}
+
+                tally = None
+                rx_tally = None
+
+                for tt_str, tt in zip(tally_type_strs, tally_types):
+
+                    sender.set_tally_color(t_id, tt_str, TallyColor.RED)
+                    expected[tt] = TallyColor.RED
+
+                    tally = sender.tallies[t_id]
+                    assert get_tally_colors(tally) == expected
+
+                    if rx_tally is None:
+                        evt_args, evt_kwargs = await evt_listener.get()
+                        rx_tally = evt_args[0]
+                        assert rx_tally == tally
+                    else:
+                        await wait_for_rx(tt)
+                        assert get_tally_colors(rx_tally) == expected
+
+                    sender.set_tally_color(t_id, tt, TallyColor.GREEN)
+                    expected[tt] = TallyColor.GREEN
+                    assert get_tally_colors(tally) == expected
+
+                    await wait_for_rx(tt)
+                    assert get_tally_colors(rx_tally) == expected
+
+                    sender.set_tally_color(t_id, tt_str, 'off')
+                    expected[tt] = TallyColor.OFF
+                    assert get_tally_colors(tally) == expected
+
+                    await wait_for_rx(tt)
+                    assert get_tally_colors(rx_tally) == expected
+
+                    sender.set_tally_color(t_id, tt, 'red')
+                    expected[tt] = TallyColor.RED
+                    assert get_tally_colors(tally) == expected
+
+                    await wait_for_rx(tt)
+                    assert get_tally_colors(rx_tally) == expected
+
+
+                sender.set_tally_color(t_id, 'all', 'off')
+                expected = {key:TallyColor.OFF for key in tally_types}
+                assert get_tally_colors(tally) == expected
+                assert tally['all'] == TallyColor.OFF
+
+                await wait_for_rx('rh|txt|lh')
+                assert get_tally_colors(rx_tally) == expected
+
+                sender.set_tally_color(t_id, 'lh|rh', 'red')
+                expected[TallyType.rh_tally] = TallyColor.RED
+                expected[TallyType.lh_tally] = TallyColor.RED
+                assert get_tally_colors(tally) == expected
+                assert tally['all'] == TallyColor.RED
+
+                await wait_for_rx('lh|rh')
+                assert get_tally_colors(rx_tally) == expected
+
+                sender.set_tally_color(t_id, 'txt', 'green')
+                expected[TallyType.txt_tally] = TallyColor.GREEN
+                assert get_tally_colors(tally) == expected
+
+                await wait_for_rx('txt')
+                assert get_tally_colors(rx_tally) == expected
+
+                assert tally['all'] == tally['lh|txt'] == tally['rh|txt'] == TallyColor.AMBER
+
 
 @pytest.mark.asyncio
 async def test_broadcast_display(udp_port):

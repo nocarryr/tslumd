@@ -14,6 +14,7 @@ from tslumd import (
     MessageType, Message, Display, TallyColor, TallyType, TallyKey,
     Tally, Screen,
 )
+from tslumd.tallyobj import StrOrTallyType, StrOrTallyColor
 from tslumd.utils import logger_catch
 
 Client = Tuple[str, int] #: A network client as a tuple of ``(address, port)``
@@ -237,24 +238,29 @@ class UmdSender(Dispatcher):
             on_control=self.on_screen_control,
         )
 
-    def set_tally_color(self, tally_id: TallyKey, tally_type: TallyType, color: TallyColor):
+    def set_tally_color(self, tally_id: TallyKey, tally_type: StrOrTallyType, color: StrOrTallyColor):
         """Set the tally color for the given index and tally type
 
+        Uses :meth:`.Tally.set_color`. See the method documentation for details
+
         Arguments:
-            tally_id: A tuple of (:attr:`screen_index <.Screen.index>`,
+            tally_id (TallyKey): A tuple of (:attr:`screen_index <.Screen.index>`,
                 :attr:`tally_index <.Tally.index>`)
-            tally_type: A member of :class:`~.common.TallyType` specifying the
-                tally lamp within the display
-            color: The member of :class:`~.common.TallyColor` to set
+            tally_type (TallyType or str): :class:`~.common.TallyType` or member
+                name as described in :meth:`.Tally.set_color`
+            color (TallyColor or str): :class:`~.common.TallyColor` or color
+                name as described in :meth:`.Tally.set_color`
 
         .. versionchanged:: 0.0.3
             Chaned the ``tally_index`` parameter to ``tally_id``
+
+        .. versionchanged:: 0.0.5
+            Accept string arguments and match behavior of :meth:`.Tally.set_color`
         """
         if tally_type == TallyType.no_tally:
             raise ValueError()
         tally = self.get_or_create_tally(tally_id)
-        attr = tally_type.name
-        setattr(tally, attr, color)
+        tally[tally_type] = color
 
     def set_tally_text(self, tally_id: TallyKey, text: str):
         """Set the tally text for the given id
