@@ -1,5 +1,6 @@
 import asyncio
 import pytest
+import pytest_asyncio
 
 from tslumd import (
     TallyType, TallyColor, TallyKey, Message, Display,
@@ -19,7 +20,7 @@ class EventListener:
     async def callback(self, *args, **kwargs):
         await self.results.put((args, kwargs))
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def udp_endpoint(udp_port0):
     class Protocol(asyncio.DatagramProtocol):
         def __init__(self):
