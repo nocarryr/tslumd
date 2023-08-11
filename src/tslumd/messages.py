@@ -231,7 +231,7 @@ class Display:
             data.extend(self._pack_control_data(self.control))
         else:
             if Flags.UTF16 in flags:
-                txt_bytes = bytes(self.text, 'UTF16-le')
+                txt_bytes = bytes(self.text, 'UTF-16le')
             else:
                 txt_bytes = bytes(self.text, 'UTF-8')
             txt_byte_len = len(txt_bytes)
