@@ -281,7 +281,7 @@ async def test_broadcast_display(udp_port):
             receiver.bind_async(loop, on_tally_updated=evt_listener.callback)
 
             # Send a broadcast tally for each color setting all TallyType's to it
-            for color in TallyColor:
+            for color in TallyColor.all():
                 color_kw = {k:color for k in color_kw.keys()}
                 await sender.send_broadcast_tally(screen_index, **color_kw)
                 await wait_for_receiver()

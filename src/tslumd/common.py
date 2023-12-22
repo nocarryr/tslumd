@@ -66,6 +66,14 @@ class TallyColor(enum.IntFlag):
     def __str__(self):
         return self.name
 
+    @classmethod
+    def all(cls):
+        """Iterate over all members
+
+        .. versionadded:: 0.0.6
+        """
+        yield from cls.__members__.values()
+
     def __format__(self, format_spec):
         if format_spec == '':
             return str(self)
@@ -110,7 +118,9 @@ class TallyType(enum.IntFlag):
         """
         if self == TallyType.all_tally:
             return True
-        return self.name is None
+        mask = 1 << (self.bit_length() - 1)
+        return self ^ mask != 0
+
 
     @classmethod
     def all(cls) -> Iterator[TallyType]:
@@ -133,7 +143,7 @@ class TallyType(enum.IntFlag):
         >>> TallyType.from_str('rh_tally')
         <TallyType.rh_tally: 1>
         >>> TallyType.from_str('rh|txt_tally')
-        <TallyType.txt_tally|rh_tally: 3>
+        <TallyType.rh_tally|txt_tally: 3>
         >>> TallyType.from_str('rh|txt|lh')
         <TallyType.all_tally: 7>
         >>> TallyType.from_str('all')
@@ -174,6 +184,16 @@ class TallyType(enum.IntFlag):
         for ttype in self.all():
             if ttype in self:
                 yield ttype
+
+    def __repr__(self):
+        if not self.is_iterable:
+            return super().__repr__()
+        if self.name is not None:
+            members = self.name
+        else:
+            members = '|'.join([m.name for m in self])
+        return f'<{self.__class__.__name__}.{members}: {self.value}>'
+
 
 class TallyState(enum.IntFlag):
     OFF = 0     #: Off
