@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import socket
 import pytest
 
 from tslumd import TallyColor, Message, Display
@@ -8,6 +9,13 @@ HERE = Path(__file__).resolve().parent
 DATA_DIR = HERE / 'data'
 MESSAGE_FILE = DATA_DIR / 'uhs500-message.umd'
 MESSAGE_JSON = DATA_DIR / 'uhs500-tally.json'
+
+@pytest.fixture(scope='session')
+def non_loopback_hostaddr():
+    hostname, aliases, addrs = socket.gethostbyname_ex(socket.gethostname())
+    addrs = [addr for addr in addrs if addr != '127.0.0.1']
+    assert len(addrs)
+    return addrs[0]
 
 @pytest.fixture
 def uhs500_msg_bytes() -> bytes:

@@ -1,6 +1,14 @@
 # from loguru import logger
 import pytest
 import asyncio
+import socket
+
+@pytest.fixture(scope='session')
+def non_loopback_hostaddr():
+    hostname, aliases, addrs = socket.gethostbyname_ex(socket.gethostname())
+    addrs = [addr for addr in addrs if addr != '127.0.0.1']
+    assert len(addrs)
+    return addrs[0]
 
 
 @pytest.fixture(scope='function')
@@ -13,13 +21,11 @@ def new_loop(request, doctest_namespace):
     loop.close()
     policy.set_event_loop(None)
 
-def receiver_setup(request, loop):
-
+def receiver_setup(request, loop, hostaddr):
     cleanup_coro = None
-
     from tslumd import UmdSender, TallyType, TallyColor
 
-    sender = UmdSender(clients=[('0.0.0.0', 65000)], all_off_on_close=False)
+    sender = UmdSender(clients=[(hostaddr, 65000)], all_off_on_close=False)
     screen_index = 1
 
     async def open_sender():
@@ -50,11 +56,11 @@ def receiver_setup(request, loop):
     asyncio.set_event_loop_policy(None)
 
 @pytest.fixture(scope="function", autouse=True)
-def doctest_stuff(request, new_loop, doctest_namespace):
+def doctest_stuff(request, new_loop, non_loopback_hostaddr):
     node_name = request.node.name
     loop = asyncio.get_event_loop()
     assert loop is new_loop
     if node_name == 'receiver.rst':
-        yield from receiver_setup(request, new_loop)
+        yield from receiver_setup(request, new_loop, non_loopback_hostaddr)
     else:
         yield

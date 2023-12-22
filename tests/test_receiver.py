@@ -158,13 +158,22 @@ async def test_broadcast_display(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoi
 
 
 @pytest.mark.asyncio
-async def test_rebind(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, udp_port, unused_tcp_port_factory):
+async def test_rebind(
+    uhs500_msg_bytes,
+    uhs500_msg_parsed,
+    udp_endpoint,
+    udp_port,
+    unused_tcp_port_factory,
+    non_loopback_hostaddr
+):
     transport, protocol, endpoint_port = udp_endpoint
     assert udp_port != endpoint_port
 
+    host_addrs = ['127.0.0.1', non_loopback_hostaddr]
+
     loop = asyncio.get_event_loop()
 
-    receiver = UmdReceiver(hostaddr='127.0.0.1', hostport=udp_port)
+    receiver = UmdReceiver(hostaddr=host_addrs[0], hostport=udp_port)
 
     evt_listener = EventListener()
     receiver.bind_async(loop, on_tally_added=evt_listener.callback)
@@ -172,7 +181,7 @@ async def test_rebind(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, udp_por
     async with receiver:
 
         # Send message bytes to receiver and wait for ``on_tally_added`` events
-        transport.sendto(uhs500_msg_bytes, ('127.0.0.1', udp_port))
+        transport.sendto(uhs500_msg_bytes, (host_addrs[0], udp_port))
         _ = await evt_listener.get()
         while not evt_listener.empty():
             _ = await evt_listener.get()
@@ -185,13 +194,13 @@ async def test_rebind(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, udp_por
 
 
         # Change bind address and trigger a change
-        await receiver.set_hostaddr('0.0.0.0')
-        assert receiver.hostaddr == '0.0.0.0'
+        await receiver.set_hostaddr(host_addrs[1])
+        assert receiver.hostaddr == host_addrs[1]
 
         disp = uhs500_msg_parsed.displays[0]
         disp.brightness = 1
 
-        transport.sendto(uhs500_msg_parsed.build_message(), ('0.0.0.0', udp_port))
+        transport.sendto(uhs500_msg_parsed.build_message(), (host_addrs[1], udp_port))
 
         evt_args, evt_kwargs = await evt_listener.get()
         evt_tally = evt_args[0]
@@ -205,7 +214,7 @@ async def test_rebind(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, udp_por
         assert receiver.hostport == new_port
 
         disp.brightness = 2
-        transport.sendto(uhs500_msg_parsed.build_message(), ('0.0.0.0', new_port))
+        transport.sendto(uhs500_msg_parsed.build_message(), (host_addrs[1], new_port))
 
         evt_args, evt_kwargs = await evt_listener.get()
         evt_tally = evt_args[0]
