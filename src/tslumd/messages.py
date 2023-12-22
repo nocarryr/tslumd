@@ -1,9 +1,10 @@
+from __future__ import annotations
 import asyncio
 import dataclasses
 from dataclasses import dataclass, field
 import enum
 import struct
-from typing import List, Tuple, Dict, Iterable, Optional
+from typing import Tuple, Iterator, Any, cast
 
 from tslumd import MessageType, TallyColor, Tally
 
@@ -111,7 +112,7 @@ class Display:
             raise ValueError('Control message cannot contain text')
 
     @classmethod
-    def broadcast(cls, **kwargs) -> 'Display':
+    def broadcast(cls, **kwargs) -> Display:
         """Create a :attr:`broadcast <is_broadcast>` display
 
         (with :attr:`index` set to ``0xffff``)
@@ -123,7 +124,7 @@ class Display:
         return cls(**kwargs)
 
     @classmethod
-    def from_dmsg(cls, flags: Flags, dmsg: bytes) -> Tuple['Display', bytes]:
+    def from_dmsg(cls, flags: Flags, dmsg: bytes) -> Tuple[Display, bytes]:
         """Construct an instance from a ``DMSG`` portion of received message.
 
         Any remaining message data after the relevant ``DMSG`` is returned along
@@ -132,9 +133,10 @@ class Display:
         if len(dmsg) < 4:
             raise DmsgParseError('Invalid dmsg length', dmsg)
         hdr = struct.unpack('<2H', dmsg[:4])
+        hdr = cast(Tuple[int, int], hdr)
         dmsg = dmsg[4:]
         ctrl = hdr[1]
-        kw = dict(
+        kw: dict[str, Any] = dict(
             index=hdr[0],
             rh_tally=TallyColor(ctrl & 0b11),
             txt_tally=TallyColor(ctrl >> 2 & 0b11),
@@ -168,7 +170,7 @@ class Display:
         return cls(**kw), dmsg
 
     @staticmethod
-    def _unpack_control_data(data: bytes) -> bytes:
+    def _unpack_control_data(data: bytes) -> Tuple[bytes, bytes]:
         """Unpack control data (if control bit 15 is set)
 
         Arguments:
@@ -239,13 +241,13 @@ class Display:
             data.extend(txt_bytes)
         return data
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         d = dataclasses.asdict(self)
         del d['is_broadcast']
         return d
 
     @classmethod
-    def from_tally(cls, tally: Tally, msg_type: MessageType = MessageType.display) -> 'Display':
+    def from_tally(cls, tally: Tally, msg_type: MessageType = MessageType.display) -> Display:
         """Create a :class:`Display` from the given :class:`~.Tally`
 
         .. versionadded:: 0.0.2
@@ -290,9 +292,9 @@ class Message:
     """A single UMDv5 message packet
     """
     version: int = 0 #: Protocol minor version
-    flags: int = Flags.NO_FLAGS #: The message :class:`Flags` field
+    flags: Flags = Flags.NO_FLAGS #: The message :class:`Flags` field
     screen: int = 0 #: Screen index from 0 to 65534 (``0xFFFE``)
-    displays: List[Display] = field(default_factory=list)
+    displays: list[Display] = field(default_factory=list)
     """A list of :class:`Display` instances"""
 
     scontrol: bytes = b''
@@ -338,7 +340,7 @@ class Message:
                 self.type = MessageType.display
 
     @classmethod
-    def broadcast(cls, **kwargs) -> 'Message':
+    def broadcast(cls, **kwargs) -> Message:
         """Create a :attr:`broadcast <is_broadcast>` message
 
         (with :attr:`screen` set to ``0xffff``)
@@ -350,7 +352,7 @@ class Message:
         return cls(**kwargs)
 
     @classmethod
-    def parse(cls, msg: bytes) -> Tuple['Message', bytes]:
+    def parse(cls, msg: bytes) -> Tuple[Message, bytes]:
         """Parse incoming message data to create a :class:`Message` instance.
 
         Any remaining message data after parsing is returned along with the instance.
@@ -382,7 +384,7 @@ class Message:
             obj.displays.append(disp)
         return obj, remaining
 
-    def build_message(self, ignore_packet_length: Optional[bool] = False) -> bytes:
+    def build_message(self, ignore_packet_length: bool = False) -> bytes:
         """Build a message packet from data in this instance
 
         Arguments:
@@ -414,7 +416,7 @@ class Message:
                 raise MessageLengthError()
         return data
 
-    def build_messages(self, ignore_packet_length: Optional[bool] = False) -> Iterable[bytes]:
+    def build_messages(self, ignore_packet_length: bool = False) -> Iterator[bytes]:
         """Build message packet(s) from data in this instance as an iterator
 
         The specified maximum packet length of 2048 is respected and if

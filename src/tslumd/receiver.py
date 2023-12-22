@@ -1,10 +1,11 @@
+from __future__ import annotations
 try:
     from loguru import logger
 except ImportError: # pragma: no cover
     import logging
     logger = logging.getLogger(__name__)
 import asyncio
-from typing import Dict, Tuple, Set, Optional
+from typing import Tuple
 
 from pydispatch import Dispatcher, Property, DictProperty, ListProperty
 
@@ -70,7 +71,7 @@ class UmdReceiver(Dispatcher):
     DEFAULT_HOST: str = '0.0.0.0' #: The default host address to listen on
     DEFAULT_PORT: int = 65000 #: The default host port to listen on
 
-    screens: Dict[int, Screen]
+    screens: dict[int, Screen]
     """Mapping of :class:`~.Screen` objects by :attr:`~.Screen.index`
 
     .. versionadded:: 0.0.3
@@ -82,7 +83,7 @@ class UmdReceiver(Dispatcher):
     .. versionadded:: 0.0.3
     """
 
-    tallies: Dict[TallyKey, Tally]
+    tallies: dict[TallyKey, Tally]
     """Mapping of :class:`~.Tally` objects by their :attr:`~.Tally.id`
 
     .. versionchanged:: 0.0.3

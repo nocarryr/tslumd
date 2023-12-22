@@ -1,3 +1,4 @@
+from __future__ import annotations
 try:
     from loguru import logger
 except ImportError: # pragma: no cover
@@ -6,7 +7,7 @@ except ImportError: # pragma: no cover
 import asyncio
 import socket
 import argparse
-from typing import Dict, Tuple, Set, Optional, Sequence, Iterable
+from typing import Tuple, Iterable
 
 from pydispatch import Dispatcher, Property, DictProperty, ListProperty
 
@@ -49,13 +50,13 @@ class UmdSender(Dispatcher):
         The ``all_off_on_close`` parameter was added
     """
 
-    screens: Dict[int, Screen]
+    screens: dict[int, Screen]
     """Mapping of :class:`~.Screen` objects by :attr:`~.Screen.index`
 
     .. versionadded:: 0.0.3
     """
 
-    tallies: Dict[TallyKey, Tally]
+    tallies: dict[TallyKey, Tally]
     """Mapping of :class:`~.Tally` objects by their :attr:`~.Tally.id`
 
     Note:
@@ -83,7 +84,7 @@ class UmdSender(Dispatcher):
     """Interval to send tally messages, regardless of state changes
     """
 
-    clients: Set[Client]
+    clients: set[Client]
     """Set of :data:`clients <Client>` to send messages to
     """
 
@@ -95,8 +96,8 @@ class UmdSender(Dispatcher):
     """
 
     def __init__(self,
-                 clients: Optional[Iterable[Client]] = None,
-                 all_off_on_close: Optional[bool] = False):
+                 clients: Iterable[Client]|None = None,
+                 all_off_on_close: bool = False):
         self.clients = set()
         if clients is not None:
             for client in clients:
@@ -110,7 +111,7 @@ class UmdSender(Dispatcher):
         assert screen.is_broadcast
         self.screens[screen.index] = screen
         self._bind_screen(screen)
-        self.update_queue = asyncio.PriorityQueue()
+        self.update_queue: asyncio.PriorityQueue[TallyKey|Tuple[int, bool]]|None = None
         self.update_task = None
         self.tx_task = None
         self.connected_evt = asyncio.Event()
@@ -338,7 +339,7 @@ class UmdSender(Dispatcher):
                 oth_tally.update_from_display(disp)
             self._bind_screen(screen)
 
-    async def on_tally_updated(self, tally: Tally, props_changed: Set[str], **kwargs):
+    async def on_tally_updated(self, tally: Tally, props_changed: set[str], **kwargs):
         if self.running:
             if set(props_changed) == set(['control']):
                 return
@@ -349,6 +350,7 @@ class UmdSender(Dispatcher):
         if self.running:
             async with self._tx_lock:
                 disp = Display.from_tally(tally, msg_type=MessageType.control)
+                assert tally.screen is not None
                 msg = self._build_message(
                     screen=tally.screen.index,
                     displays=[disp],
@@ -389,8 +391,9 @@ class UmdSender(Dispatcher):
             if item is False:
                 self.update_queue.task_done()
                 break
-            elif item is None and not self._tx_lock.locked():
-                await self.send_full_update()
+            elif item is None:
+                if not self._tx_lock.locked():
+                    await self.send_full_update()
             else:
                 screen_index, _ = item
                 ids = set([item])
@@ -476,13 +479,13 @@ class ClientArgAction(argparse._AppendAction):
         )
 
     def __call__(self, parser, namespace, values, option_string=None):
-        addr, port = values.split(':')
+        addr, port = values.split(':')              # type: ignore
         values = (addr, int(port))
         items = getattr(namespace, self.dest, None)
         if items == [('127.0.0.1', 65000)]:
             items = []
         else:
-            items = argparse._copy_items(items)
+            items = argparse._copy_items(items)     # type: ignore
         items.append(values)
         setattr(namespace, self.dest, items)
 

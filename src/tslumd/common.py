@@ -1,5 +1,6 @@
+from __future__ import annotations
 import enum
-from typing import Tuple, Iterable
+from typing import Tuple, Iterator
 
 __all__ = ('TallyColor', 'TallyType', 'TallyState', 'MessageType', 'TallyKey')
 
@@ -32,7 +33,7 @@ class TallyColor(enum.IntFlag):
     AMBER = RED | GREEN #: Amber
 
     @staticmethod
-    def from_str(s: str) -> 'TallyColor':
+    def from_str(s: str) -> TallyColor:
         """Return the member matching the given name (case-insensitive)
 
         >>> TallyColor.from_str('RED')
@@ -112,7 +113,7 @@ class TallyType(enum.IntFlag):
         return self.name is None
 
     @classmethod
-    def all(cls) -> Iterable['TallyType']:
+    def all(cls) -> Iterator[TallyType]:
         """Iterate over all members, excluding :attr:`no_tally` and :attr:`all_tally`
 
         .. versionadded:: 0.0.4
@@ -122,7 +123,7 @@ class TallyType(enum.IntFlag):
                 yield ttype
 
     @staticmethod
-    def from_str(s: str) -> 'TallyType':
+    def from_str(s: str) -> TallyType:
         """Create an instance from a string of member name(s)
 
         The string can be a single member or multiple member names separated by
@@ -169,7 +170,7 @@ class TallyType(enum.IntFlag):
             return '|'.join((obj.name for obj in self))
         return self.name
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[TallyType]:
         for ttype in self.all():
             if ttype in self:
                 yield ttype
