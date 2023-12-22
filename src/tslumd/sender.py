@@ -67,18 +67,9 @@ class UmdSender(Dispatcher):
         :class:`.Tally` indices
     """
 
-    broadcast_screen: Screen
-    """A :class:`~.Screen` instance created using :meth:`.Screen.broadcast`
-
-    .. versionadded:: 0.0.3
-    """
-
     running: bool
     """``True`` if the client / server are running
     """
-
-    loop: asyncio.BaseEventLoop
-    """The :class:`asyncio.BaseEventLoop` associated with the instance"""
 
     tx_interval: float = .3
     """Interval to send tally messages, regardless of state changes
@@ -95,8 +86,6 @@ class UmdSender(Dispatcher):
     .. versionadded:: 0.0.4
     """
 
-    update_queue: asyncio.PriorityQueue[TallyKey|tuple[int, bool]]|None
-
     def __init__(self,
                  clients: Iterable[Client]|None = None,
                  all_off_on_close: bool = False):
@@ -108,23 +97,68 @@ class UmdSender(Dispatcher):
         self.screens = {}
         self.tallies = {}
         self.running = False
-        self.loop = asyncio.get_event_loop()
-        screen = self.broadcast_screen = Screen.broadcast()
+        self.__loop: asyncio.AbstractEventLoop|None = None
+        self.__broadcast_screen: Screen|None = None
+        self.__update_queue: asyncio.PriorityQueue[TallyKey|tuple[int, bool]]|None = None
+        self.update_task = None
+        self.tx_task: asyncio.Task|None = None
+        self.__connected_evt: asyncio.Event| None = None
+        self.__tx_lock: asyncio.Lock|None = None
+
+    @property
+    def loop(self) -> asyncio.AbstractEventLoop:
+        """The :class:`asyncio.BaseEventLoop` associated with the instance"""
+        loop = self.__loop
+        if loop is None:
+            loop = self.__loop = asyncio.get_running_loop()
+        return loop
+
+    @property
+    def connected_evt(self) -> asyncio.Event:
+        e = self.__connected_evt
+        if e is None:
+            e = self.__connected_evt = asyncio.Event()
+        return e
+
+    @property
+    def _tx_lock(self) -> asyncio.Lock:
+        l = self.__tx_lock
+        if l is None:
+            l = self.__tx_lock = asyncio.Lock()
+        return l
+
+    @property
+    def update_queue(self) -> asyncio.PriorityQueue[TallyKey|tuple[int, bool]]:
+        q = self.__update_queue
+        if q is None:
+            q = self.__update_queue = asyncio.PriorityQueue()
+        return q
+
+    @property
+    def broadcast_screen(self) -> Screen:
+        """A :class:`~.Screen` instance created using :meth:`.Screen.broadcast`
+
+        .. versionadded:: 0.0.3
+        """
+        return self._build_broadcast_screen()
+
+    def _build_broadcast_screen(self) -> Screen:
+        if self.__broadcast_screen is not None:
+            return self.__broadcast_screen
+        screen = self.__broadcast_screen = Screen.broadcast()
         assert screen.is_broadcast
         self.screens[screen.index] = screen
         self._bind_screen(screen)
-        self.update_queue = asyncio.PriorityQueue()
-        self.update_task = None
-        self.tx_task = None
-        self.connected_evt = asyncio.Event()
-        self._tx_lock = asyncio.Lock()
+        return screen
 
     async def open(self):
         """Open connections and begin data transmission
         """
         if self.running:
             return
+        self._build_broadcast_screen()
         self.connected_evt.clear()
+        assert self.tx_task is None
         logger.debug('UmdSender.open()')
         self.running = True
         self.transport, self.protocol = await self.loop.create_datagram_endpoint(
@@ -142,8 +176,10 @@ class UmdSender(Dispatcher):
         logger.debug('UmdSender.close()')
         self.running = False
         await self.update_queue.put((0, False))
-        await self.tx_task
+        t = self.tx_task
         self.tx_task = None
+        if t is not None:
+            await t
         if self.all_off_on_close:
             logger.debug('sending all off broadcast message')
             await self.send_broadcast_tally(0xffff)
@@ -425,6 +461,7 @@ class UmdSender(Dispatcher):
                     await self.send_message(msg)
 
     async def send_message(self, msg: Message):
+        assert self._tx_lock.locked()
         for data in msg.build_messages():
             for client in self.clients:
                 self.transport.sendto(data, client)

@@ -95,9 +95,6 @@ class UmdReceiver(Dispatcher):
     """``True`` if the client / server are running
     """
 
-    loop: asyncio.BaseEventLoop
-    """The :class:`asyncio.BaseEventLoop` associated with the instance"""
-
     _events_ = [
         'on_tally_added', 'on_tally_updated', 'on_tally_control',
         'on_screen_added', 'on_scontrol',
@@ -110,10 +107,32 @@ class UmdReceiver(Dispatcher):
         self._bind_screen(self.broadcast_screen)
         self.screens[self.broadcast_screen.index] = self.broadcast_screen
         self.tallies = {}
-        self.loop = asyncio.get_event_loop()
+        self.__loop: asyncio.AbstractEventLoop|None = None
         self.running = False
-        self._connect_lock = asyncio.Lock()
-        self.connected_evt = asyncio.Event()
+        self.__connect_lock: asyncio.Lock|None = None
+        self.__connected_evt: asyncio.Event|None = None
+
+    @property
+    def loop(self) -> asyncio.AbstractEventLoop:
+        """The :class:`asyncio.BaseEventLoop` associated with the instance"""
+        loop = self.__loop
+        if loop is None:
+            loop = self.__loop = asyncio.get_running_loop()
+        return loop
+
+    @property
+    def connected_evt(self) -> asyncio.Event:
+        e = self.__connected_evt
+        if e is None:
+            e = self.__connected_evt = asyncio.Event()
+        return e
+
+    @property
+    def _connect_lock(self) -> asyncio.Lock:
+        l = self.__connect_lock
+        if l is None:
+            l = self.__connect_lock = asyncio.Lock()
+        return l
 
     @property
     def hostaddr(self) -> str:
