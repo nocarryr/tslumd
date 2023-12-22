@@ -55,6 +55,6 @@ def doctest_stuff(request, new_loop, doctest_namespace):
     loop = asyncio.get_event_loop()
     assert loop is new_loop
     if node_name == 'receiver.rst':
-        yield from receiver_setup(request, doctest_namespace)
+        yield from receiver_setup(request, new_loop)
     else:
         yield
