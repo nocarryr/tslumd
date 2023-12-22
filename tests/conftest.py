@@ -39,9 +39,9 @@ def uhs500_msg_parsed() -> Message:
     return Message(**data)
 
 @pytest.fixture
-def udp_port0(unused_tcp_port_factory):
-    return unused_tcp_port_factory()
+def udp_port0(unused_udp_port_factory):
+    return unused_udp_port_factory()
 
 @pytest.fixture
-def udp_port(unused_tcp_port_factory):
-    return unused_tcp_port_factory()
+def udp_port(unused_udp_port_factory):
+    return unused_udp_port_factory()

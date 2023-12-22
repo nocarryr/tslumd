@@ -163,7 +163,7 @@ async def test_rebind(
     uhs500_msg_parsed,
     udp_endpoint,
     udp_port,
-    unused_tcp_port_factory,
+    unused_udp_port_factory,
     non_loopback_hostaddr
 ):
     transport, protocol, endpoint_port = udp_endpoint
@@ -207,7 +207,7 @@ async def test_rebind(
         assert disp == evt_tally
 
         # Change bind port and trigger a change
-        new_port = unused_tcp_port_factory()
+        new_port = unused_udp_port_factory()
         assert new_port != udp_port
 
         await receiver.set_hostport(new_port)
