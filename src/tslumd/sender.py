@@ -95,6 +95,8 @@ class UmdSender(Dispatcher):
     .. versionadded:: 0.0.4
     """
 
+    update_queue: asyncio.PriorityQueue[TallyKey|tuple[int, bool]]|None
+
     def __init__(self,
                  clients: Iterable[Client]|None = None,
                  all_off_on_close: bool = False):
@@ -111,7 +113,7 @@ class UmdSender(Dispatcher):
         assert screen.is_broadcast
         self.screens[screen.index] = screen
         self._bind_screen(screen)
-        self.update_queue: asyncio.PriorityQueue[TallyKey|Tuple[int, bool]]|None = None
+        self.update_queue = asyncio.PriorityQueue()
         self.update_task = None
         self.tx_task = None
         self.connected_evt = asyncio.Event()
