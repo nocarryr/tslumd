@@ -25,8 +25,7 @@ Starting and stopping can be done by calling the :meth:`UmdReceiver.open` and
     ...     await receiver.open()
     ...     ...
     ...     await receiver.close()
-    >>> loop = asyncio.get_event_loop()
-    >>> loop.run_until_complete(run())
+    >>> asyncio.run(run())
 
 or it can be used as an :term:`asynchronous context manager`
 in an :keyword:`async with` block
@@ -39,8 +38,7 @@ in an :keyword:`async with` block
     ...     receiver = UmdReceiver()
     ...     async with receiver:
     ...         ...
-    >>> loop = asyncio.get_event_loop()
-    >>> loop.run_until_complete(run())
+    >>> asyncio.run(run())
 
 
 Object Access
@@ -89,7 +87,6 @@ They are indexed 1 through 4 and their screen index is 1.
     ...     for name in props_changed:
     ...         value = getattr(tally, name)
     ...         print(f'tally_updated: {tally!r}.{name} = {value}')
-    >>> loop = asyncio.get_event_loop()
     >>> receiver = UmdReceiver()
     >>> receiver.bind(
     ...     on_screen_added=screen_added,

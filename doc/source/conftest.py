@@ -2,15 +2,18 @@
 import pytest
 import asyncio
 
-def receiver_setup(request, doctest_namespace):
-    node_name = request.node.name
+
+@pytest.fixture(scope='function')
+def new_loop(request, doctest_namespace):
     policy = asyncio.get_event_loop_policy()
     loop = policy.new_event_loop()
     policy.set_event_loop(loop)
-    # logger.info(f'{request.node=}, {request.function=}, {request.module=}')
-    # logger.info(f'event loop: {loop!r}')
-    # doctest_namespace['_asyncio'] = asyncio
-    # doctest_namespace['_loop'] = loop
+    doctest_namespace['loop'] = loop
+    yield loop
+    loop.close()
+    policy.set_event_loop(None)
+
+def receiver_setup(request, loop):
 
     cleanup_coro = None
 
@@ -47,8 +50,10 @@ def receiver_setup(request, doctest_namespace):
     asyncio.set_event_loop_policy(None)
 
 @pytest.fixture(scope="function", autouse=True)
-def doctest_stuff(request, doctest_namespace):
+def doctest_stuff(request, new_loop, doctest_namespace):
     node_name = request.node.name
+    loop = asyncio.get_event_loop()
+    assert loop is new_loop
     if node_name == 'receiver.rst':
         yield from receiver_setup(request, doctest_namespace)
     else:

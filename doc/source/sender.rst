@@ -33,8 +33,7 @@ Starting and stopping can be done by calling the :meth:`UmdSender.open` and
     ...     await sender.open()
     ...     ...
     ...     await sender.close()
-    >>> loop = asyncio.get_event_loop()
-    >>> loop.run_until_complete(run())
+    >>> asyncio.run(run())
 
 or it can be used as an :term:`asynchronous context manager`
 in an :keyword:`async with` block
@@ -47,8 +46,7 @@ in an :keyword:`async with` block
     ...     sender = UmdSender(clients=[('127.0.0.1', 65000)])
     ...     async with sender:
     ...         ...
-    >>> loop = asyncio.get_event_loop()
-    >>> loop.run_until_complete(run())
+    >>> asyncio.run(run())
 
 
 Object Access
@@ -96,6 +94,7 @@ and :term:`TallyColor` arguments are used.
     >>> from pprint import pprint
     >>> from tslumd import UmdSender, TallyType, TallyColor
     >>> sender = UmdSender(clients=[('127.0.0.1', 65000)])
+    >>> loop.run_until_complete(sender.open())
     >>> for cam_num in range(1, 5):
     ...     sender.set_tally_text((1, cam_num), f'Camera {cam_num}') # Creates a new Tally
     >>> pprint(sender.tallies)
@@ -114,6 +113,7 @@ and :term:`TallyColor` arguments are used.
      (1, 2): <Tally: ((1, 2) - "Camera 2")>,
      (1, 3): <Tally: ((1, 3) - "Camera 3")>,
      (1, 4): <Tally: ((1, 4) - "Handheld")>}
+    >>> loop.run_until_complete(sender.close())
 
 
 Direct Tally Changes

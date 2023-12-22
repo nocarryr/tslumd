@@ -67,6 +67,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
+    'pytest_doctestplus.sphinx.doctestplus',
     'propertyobj',
     'builtinproperty',
     'eventobj',
