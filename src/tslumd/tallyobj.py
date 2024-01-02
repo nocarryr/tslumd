@@ -475,18 +475,13 @@ class Screen(Dispatcher):
         return self.add_tally(index_)
 
     def _add_tally_obj(self, tally: Tally):
+        assert not tally.is_broadcast
         self.tallies[tally.index] = tally
-        if tally.is_broadcast:
-            tally.bind(
-                on_update=self._on_broadcast_tally_updated,
-                on_control=self._on_broadcast_tally_updated,
-            )
-        else:
-            tally.bind(
-                on_update=self._on_tally_updated,
-                on_control=self._on_tally_control,
-            )
-            self.emit('on_tally_added', tally)
+        tally.bind(
+            on_update=self._on_tally_updated,
+            on_control=self._on_tally_control,
+        )
+        self.emit('on_tally_added', tally)
 
     def update_from_message(self, msg: Message):
         """Handle an incoming :class:`~.Message`
