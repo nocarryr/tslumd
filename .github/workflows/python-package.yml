@@ -33,7 +33,9 @@ jobs:
         pip install -e .
     - name: Test with pytest
       run: |
-        py.test --cov=src
+        py.test --cov=src tests src
+        py.test --cov=src --cov-append doc
+
     - name: Upload to Coveralls
       run: coveralls --service=github
       env:
