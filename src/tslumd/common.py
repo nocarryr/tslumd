@@ -176,7 +176,9 @@ class TallyType(enum.IntFlag):
 
         .. versionadded:: 0.0.5
         """
-        if self.name is None:
+        if self == TallyType.all_tally:
+            return self.name
+        if self.is_iterable:
             return '|'.join((obj.name for obj in self))
         return self.name
 
@@ -186,13 +188,7 @@ class TallyType(enum.IntFlag):
                 yield ttype
 
     def __repr__(self):
-        if not self.is_iterable:
-            return super().__repr__()
-        if self.name is not None:
-            members = self.name
-        else:
-            members = '|'.join([m.name for m in self])
-        return f'<{self.__class__.__name__}.{members}: {self.value}>'
+        return f'<{self.__class__.__name__}.{self.to_str()}: {self.value}>'
 
 
 class TallyState(enum.IntFlag):
