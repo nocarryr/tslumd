@@ -165,6 +165,8 @@ class UmdSender(Dispatcher):
             lambda: UmdProtocol(self),
             family=socket.AF_INET,
         )
+        for screen in self.screens.values():
+            self._bind_screen(screen)
         self.tx_task = asyncio.create_task(self.tx_loop())
         logger.info('UmdSender running')
 
@@ -175,6 +177,8 @@ class UmdSender(Dispatcher):
             return
         logger.debug('UmdSender.close()')
         self.running = False
+        for screen in self.screens.values():
+            screen.unbind(self)
         await self.update_queue.put((0, False))
         t = self.tx_task
         self.tx_task = None
