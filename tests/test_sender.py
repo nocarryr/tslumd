@@ -215,7 +215,7 @@ async def test_tally_type_variations(udp_port):
                     await wait_for_rx(tt)
                     assert get_tally_colors(rx_tally) == expected
 
-
+                assert tally is not None
                 sender.set_tally_color(t_id, 'all', 'off')
                 expected = {key:TallyColor.OFF for key in tally_types}
                 assert get_tally_colors(tally) == expected
@@ -577,6 +577,7 @@ async def test_all_off_on_close(faker, udp_port):
                     assert rx_tally == tx_tally
 
                     for ttype in TallyType.all():
+                        assert ttype.name is not None
                         setattr(tx_tally, ttype.name, TallyColor.RED)
 
                         evt_args, evt_kwargs = await tally_listener.get()

@@ -61,6 +61,7 @@ class TallyColor(enum.IntFlag):
 
         .. versionadded:: 0.0.5
         """
+        assert self.name is not None
         return self.name
 
     def __str__(self) -> str:
@@ -180,9 +181,11 @@ class TallyType(enum.IntFlag):
         .. versionadded:: 0.0.5
         """
         if self == TallyType.all_tally:
+            assert self.name is not None
             return self.name
         if self.is_iterable:
             return '|'.join((str(obj) for obj in self))
+        assert self.name is not None
         return self.name
 
     def __iter__(self) -> Iterator[TallyType]:

@@ -27,6 +27,7 @@ def test_tally_display_conversion(faker):
             tally.brightness = brightness
             assert 0 <= tally.normalized_brightness <= 1
             assert tally.normalized_brightness == brightness / 3
+            assert tally_type.name is not None
             setattr(tally, tally_type.name, color)
             setattr(disp, tally_type.name, color)
             for word in faker.words(3):
@@ -154,6 +155,7 @@ async def test_update_event(faker):
 
     for tally_type, color in iter_tally_types_and_colors():
         attr = tally_type.name
+        assert attr is not None
         should_change = getattr(tally, attr) != color
         # print(f'{tally_type=}, {color=}, {should_change=}')
         setattr(tally, attr, color)

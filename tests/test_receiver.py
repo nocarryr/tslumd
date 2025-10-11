@@ -87,6 +87,7 @@ async def test_with_uhs_data(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, 
 
             for tally_type in TallyType.all():
                 attr = tally_type.name
+                assert attr is not None
                 cur_value = getattr(disp, attr)
                 if cur_value == TallyColor.RED:
                     new_value = TallyColor.GREEN

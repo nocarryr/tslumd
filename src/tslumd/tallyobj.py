@@ -333,8 +333,10 @@ class Tally(Dispatcher):
         if key.is_iterable:
             color = TallyColor.OFF
             for tt in key:
+                assert tt.name is not None
                 color |= getattr(self, tt.name)
             return color
+        assert key.name is not None
         return getattr(self, key.name)
 
     def __setitem__(self, key: StrOrTallyType, value: StrOrTallyColor):
@@ -344,8 +346,10 @@ class Tally(Dispatcher):
             value = TallyColor.from_str(value)
         if key.is_iterable:
             for tt in key:
+                assert tt.name is not None
                 setattr(self, tt.name, value)
         else:
+            assert key.name is not None
             setattr(self, key.name, value)
 
     def __eq__(self, other):
