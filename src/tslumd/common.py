@@ -118,6 +118,8 @@ class TallyType(enum.IntFlag):
         """
         if self == TallyType.all_tally:
             return True
+        if self.value == 0:
+            return False
         mask = 1 << (self.bit_length() - 1)
         return self ^ mask != 0
 
