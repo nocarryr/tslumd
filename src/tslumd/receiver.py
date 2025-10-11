@@ -1,7 +1,7 @@
 from __future__ import annotations
 try:
-    from loguru import logger
-except ImportError: # pragma: no cover
+    from loguru import logger   # type: ignore[missing-import]
+except ImportError:             # pragma: no cover
     import logging
     logger = logging.getLogger(__name__)
 import asyncio
