@@ -9,9 +9,11 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
-
-  release:
-    types: [created]
+    inputs:
+      allow_deploy:
+        description: "Deploy to PyPI"
+        required: true
+        type: boolean
 
 jobs:
   build:
@@ -69,7 +71,7 @@ jobs:
 
   deploy:
     needs: test
-    if: ${{ success() && github.event_name == 'release' }}
+    if: ${{ success() && inputs.allow_deploy }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
