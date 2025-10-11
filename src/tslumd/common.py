@@ -63,8 +63,8 @@ class TallyColor(enum.IntFlag):
         """
         return self.name
 
-    def __str__(self):
-        return self.name
+    def __str__(self) -> str:
+        return self.to_str()
 
     @classmethod
     def all(cls):
@@ -74,10 +74,11 @@ class TallyColor(enum.IntFlag):
         """
         yield from cls.__members__.values()
 
-    def __format__(self, format_spec):
+    def __format__(self, format_spec: str) -> str:
         if format_spec == '':
             return str(self)
-        return super().__format__(format_spec)
+        return format(self.to_str(), format_spec)
+
 
 class TallyType(enum.IntFlag):
     """Enum for the three tally display types in the UMD protocol
@@ -181,7 +182,7 @@ class TallyType(enum.IntFlag):
         if self == TallyType.all_tally:
             return self.name
         if self.is_iterable:
-            return '|'.join((obj.name for obj in self))
+            return '|'.join((str(obj) for obj in self))
         return self.name
 
     def __iter__(self) -> Iterator[TallyType]:
@@ -189,8 +190,11 @@ class TallyType(enum.IntFlag):
             if ttype in self:
                 yield ttype
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<{self.__class__.__name__}.{self.to_str()}: {self.value}>'
+
+    def __str__(self) -> str:
+        return self.to_str()
 
 
 class TallyState(enum.IntFlag):
