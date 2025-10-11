@@ -38,6 +38,7 @@ def test_tally_display_conversion(faker):
                 assert disp == Display.from_tally(tally) == tally
                 assert Tally.from_display(disp).normalized_brightness == tally.normalized_brightness
 
+
 def test_color_merge():
     t1 = Tally(0)
 
@@ -123,6 +124,7 @@ class Listener:
         # print(f'callback: {tally=}, {props_changed=}')
         await self.results.put(tuple(args))
 
+
 @pytest.mark.asyncio
 async def test_update_event(faker):
     loop = asyncio.get_event_loop()
@@ -162,6 +164,7 @@ async def test_update_event(faker):
             await asyncio.sleep(.01)
             assert listener.results.empty()
 
+
 @pytest.mark.asyncio
 async def test_control_event(faker):
     loop = asyncio.get_event_loop()
@@ -182,6 +185,7 @@ async def test_control_event(faker):
         _, rx_data = await listener.get()
         assert rx_data == tally.control == disp.control == control_data
         assert disp == tally == Tally.from_display(disp)
+
 
 @pytest.mark.asyncio
 async def test_control_event_with_text(faker):

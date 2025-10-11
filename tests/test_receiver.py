@@ -20,6 +20,7 @@ class EventListener:
     async def callback(self, *args, **kwargs):
         await self.results.put((args, kwargs))
 
+
 @pytest_asyncio.fixture
 async def udp_endpoint(udp_port0):
     class Protocol(asyncio.DatagramProtocol):
@@ -101,6 +102,7 @@ async def test_with_uhs_data(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, 
             evt_tally = evt_args[0]
             assert evt_tally is tally
             assert disp == tally
+
 
 @pytest.mark.asyncio
 async def test_broadcast_display(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, udp_port, faker):
@@ -219,6 +221,7 @@ async def test_rebind(
         evt_args, evt_kwargs = await evt_listener.get()
         evt_tally = evt_args[0]
         assert disp == evt_tally
+
 
 @pytest.mark.asyncio
 async def test_scontrol(faker, udp_endpoint, udp_port):

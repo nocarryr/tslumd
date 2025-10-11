@@ -19,6 +19,7 @@ class EventListener:
     async def callback(self, *args, **kwargs):
         await self.results.put((args, kwargs))
 
+
 @pytest_asyncio.fixture
 async def udp_endpoint(udp_port0):
     class Protocol(asyncio.DatagramProtocol):
@@ -38,6 +39,7 @@ async def udp_endpoint(udp_port0):
     await protocol.connected_evt.wait()
     yield (transport, protocol, udp_port0)
     transport.close()
+
 
 @pytest.mark.asyncio
 async def test_with_uhs_data(udp_port):
@@ -121,6 +123,7 @@ async def test_with_uhs_data(udp_port):
             for tx_tally in sender.tallies.values():
                 rx_tally = receiver.tallies[tx_tally.id]
                 assert rx_tally == tx_tally
+
 
 @pytest.mark.asyncio
 async def test_tally_type_variations(udp_port):
@@ -438,6 +441,7 @@ async def test_disp_control(faker, udp_port):
             assert rx_tally.control == tx_tally.control == control_data
             assert rx_tally == tx_tally
 
+
 @pytest.mark.asyncio
 async def test_clients_modified_during_runtime(udp_port, udp_port0):
     loop = asyncio.get_event_loop()
@@ -543,6 +547,7 @@ async def test_queued_updates_are_separate_messages(udp_endpoint, udp_port):
                 assert tally.text == f'Tally-{tally.id}'
                 assert len(screen.tallies) == 10
 
+
 @pytest.mark.asyncio
 async def test_all_off_on_close(faker, udp_port):
     loop = asyncio.get_event_loop()
@@ -585,6 +590,7 @@ async def test_all_off_on_close(faker, udp_port):
             assert rx_tally.rh_tally == TallyColor.OFF
             assert rx_tally.txt_tally == TallyColor.OFF
             assert rx_tally.lh_tally == TallyColor.OFF
+
 
 @pytest.mark.asyncio
 async def test_broadcast_screen_updates(udp_endpoint, udp_port):

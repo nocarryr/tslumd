@@ -26,6 +26,7 @@ def test_uhs_message(uhs500_msg_bytes, uhs500_msg_parsed):
     assert not len(remaining)
     assert parsed == uhs500_msg_parsed
 
+
 def test_messages():
     msgobj = Message(version=1, screen=5)
     rh_tallies = [getattr(TallyColor, attr) for attr in ['RED','OFF','GREEN','AMBER']]
@@ -124,6 +125,7 @@ def test_broadcast_message(faker):
 
     assert msgobj1 == msgobj2 == parsed1 == parsed2
 
+
 def test_broadcast_display(uhs500_msg_parsed, faker):
 
     disp_attrs = ('rh_tally', 'txt_tally', 'lh_tally', 'text', 'brightness')
@@ -195,6 +197,7 @@ def test_scontrol(faker):
             disp_msg = Message(displays=[disp], scontrol=control_data)
         assert 'SCONTROL' in str(excinfo.value)
 
+
 def test_dmsg_control(uhs500_msg_parsed, faker):
     tested_zero = False
     for _ in range(10):
@@ -245,6 +248,7 @@ def test_dmsg_control(uhs500_msg_parsed, faker):
         excstr = str(excinfo.value).lower()
         assert 'control' in excstr and 'text' in excstr
 
+
 def test_invalid_message(uhs500_msg_bytes, faker):
     bad_bytes = faker.binary(length=5)
     with pytest.raises(MessageParseError) as excinfo:
@@ -258,6 +262,7 @@ def test_invalid_message(uhs500_msg_bytes, faker):
     with pytest.raises(MessageParseError) as excinfo:
         r = Message.parse(bad_bytes)
     assert 'byte count' in str(excinfo.value).lower()
+
 
 def test_invalid_dmsg(uhs500_msg_bytes, faker):
 
@@ -291,6 +296,7 @@ def test_invalid_dmsg(uhs500_msg_bytes, faker):
     with pytest.raises(DmsgParseError) as excinfo:
         r = Message.parse(bad_bytes)
     assert 'invalid text bytes' in str(excinfo.value).lower()
+
 
 def test_invalid_dmsg_control(uhs500_msg_bytes, faker):
     msg = Message()
