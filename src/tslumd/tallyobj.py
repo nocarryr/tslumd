@@ -50,16 +50,16 @@ class Tally(Dispatcher):
 
     .. versionadded:: 0.0.3
     """
-    rh_tally = Property(TallyColor.OFF)
-    txt_tally = Property(TallyColor.OFF)
-    lh_tally = Property(TallyColor.OFF)
-    brightness = Property(3)
-    normalized_brightness = Property(1.)
-    text = Property('')
-    control = Property(b'')
+    rh_tally = cast(TallyColor, Property(TallyColor.OFF))
+    txt_tally = cast(TallyColor, Property(TallyColor.OFF))
+    lh_tally = cast(TallyColor, Property(TallyColor.OFF))
+    brightness = cast(int, Property(3))
+    normalized_brightness = cast(float, Property(1.))
+    text = cast(str, Property(''))
+    control = cast(bytes, Property(b''))
     _events_ = ['on_update', 'on_control']
     _prop_attrs = ('rh_tally', 'txt_tally', 'lh_tally', 'brightness', 'text', 'control')
-    def __init__(self, index_, **kwargs):
+    def __init__(self, index_: int, **kwargs):
         self.screen = kwargs.get('screen')
         self.__index = index_
         if self.screen is not None:
