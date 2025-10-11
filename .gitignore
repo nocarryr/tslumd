@@ -89,3 +89,5 @@ ENV/
 .ropeproject
 
 venv*
+.venv*
+.pytest_cache/
