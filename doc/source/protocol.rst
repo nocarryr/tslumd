@@ -7,7 +7,7 @@ Overview
 The UMD protocols, developed by `TSL Products`_ are used throughout the
 broadcast video industry to control tally indicators in Multiviewer products and
 Under-Monitor Displays. The documentation for all versions can be found here:
-https://tslproducts.com/media/1959/tsl-umd-protocol.pdf
+https://tslproducts.com/wp-content/uploads/Manuals/Control/tsl-umd-protocol.pdf
 
 
 This library focuses on the most recent version: UMDv5
