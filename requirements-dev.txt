@@ -1,7 +1,0 @@
-pytest
-pytest-asyncio
-pytest-cov
-pytest-doctestplus
-pytest-timeout
-Faker
--r doc/requirements.txt

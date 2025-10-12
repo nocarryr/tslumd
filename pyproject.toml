@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "tslumd"
+version = "0.0.7"
+description = "Client and Server for TSLUMD Tally Protocols"
+authors = [
+    { name = "Matthew Reid", email = "matt@nomadic-recording.com" }
+]
+readme = "README.rst"
+requires-python = ">=3.9"
+license = "MIT"
+keywords = ["tally", "tsl", "tslumd", "video", "broadcast"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Framework :: AsyncIO",
+    "Topic :: Communications",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "python-dispatch>=0.2.2",
+    "importlib-metadata; python_version < '3.8'",
+]
+
+[project.urls]
+Homepage = "https://github.com/nocarryr/tslumd"
+Documentation = "https://tslumd.readthedocs.io/"
+Source = "https://github.com/nocarryr/tslumd"
+Download = "https://pypi.org/project/tslumd/"
+
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "src", "doc"]
+addopts = "--doctest-modules --doctest-glob='*.rst'"
+doctest_plus = true
+timeout = 300
+
+[dependency-groups]
+doc = [
+    "sphinx>=7.1.2",
+    "sphinx-rtd-theme>=3.0.2",
+]
+test = [
+    "faker>=35.2.2",
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "pytest-doctestplus>=1.3.0",
+    "pytest-timeout>=2.4.0",
+]
+dev = [
+    {include-group = "doc"},
+    {include-group = "test"},
+    "ipython>=8.12.3",
+]
