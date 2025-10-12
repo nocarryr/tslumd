@@ -328,3 +328,10 @@ def test_bench_message_parse(uhs500_msg_bytes, uhs500_msg_parsed):
     parsed, remaining = Message.parse(uhs500_msg_bytes)
     assert not len(remaining)
     assert parsed == uhs500_msg_parsed
+
+
+@pytest.mark.benchmark(group='message-build')
+def test_bench_message_build(uhs500_msg_bytes, uhs500_msg_parsed_fixed_text_length):
+    msg_bytes = uhs500_msg_parsed_fixed_text_length.build_message()
+    assert len(msg_bytes) == len(uhs500_msg_bytes)
+    assert msg_bytes == uhs500_msg_bytes
