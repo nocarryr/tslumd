@@ -69,7 +69,6 @@ extensions = [
     'sphinx.ext.todo',
     'pytest_doctestplus.sphinx.doctestplus',
     'propertyobj',
-    'builtinproperty',
     'eventobj',
 ]
 
