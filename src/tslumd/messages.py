@@ -103,6 +103,20 @@ class Display:
 
     .. versionadded:: 0.0.2
     """
+    text_length: int|None = field(default=None, compare=False)
+    """Length of the :attr:`text` field
+
+    If provided, the text output will be zero-padded or truncated to this length.
+    If ``None`` (the default), the text length is variable.
+
+
+    .. note::
+
+        This is mainly for internal use during test runs to match the fixed-length
+        text field in actual message bytes.
+
+    .. versionadded:: 0.0.8
+    """
 
     def __post_init__(self):
         self.is_broadcast = self.index == 0xffff
@@ -124,11 +138,23 @@ class Display:
         return cls(**kwargs)
 
     @classmethod
-    def from_dmsg(cls, flags: Flags, dmsg: bytes) -> Tuple[Display, bytes]:
+    def from_dmsg(cls, flags: Flags, dmsg: bytes, retain_text_length: bool = False) -> Tuple[Display, bytes]:
         """Construct an instance from a ``DMSG`` portion of received message.
 
         Any remaining message data after the relevant ``DMSG`` is returned along
         with the instance.
+
+        Arguments:
+            flags: The message :class:`Flags` field
+            dmsg: The portion of the message containing the ``DMSG`` data
+            retain_text_length: If ``True``, the :attr:`text_length` attribute
+                will be set to the length of the text field as found in the
+                message bytes. Otherwise (the default), it will be set to ``None``
+                and the text length will be variable.
+
+        .. versionchanged:: 0.0.8
+
+            The `retain_text_length` argument was added.
         """
         if len(dmsg) < 4:
             raise DmsgParseError('Invalid dmsg length', dmsg)
@@ -163,9 +189,14 @@ class Display:
             if Flags.UTF16 in flags:
                 txt = txt_bytes.decode('UTF-16le')
             else:
+                txt_length = len(txt_bytes)
                 if b'\0' in txt_bytes:
                     txt_bytes = txt_bytes.split(b'\0')[0]
                 txt = txt_bytes.decode('UTF-8')
+                if retain_text_length:
+                    kw['text_length'] = txt_length
+                else:
+                    kw['text_length'] = None
             kw['text'] = txt
         return cls(**kw), dmsg
 
@@ -236,6 +267,8 @@ class Display:
                 txt_bytes = bytes(self.text, 'UTF-16le')
             else:
                 txt_bytes = bytes(self.text, 'UTF-8')
+            if self.text_length is not None:
+                txt_bytes = txt_bytes.ljust(self.text_length, b'\0')[:self.text_length]
             txt_byte_len = len(txt_bytes)
             data = bytearray(struct.pack('<3H', self.index, ctrl, txt_byte_len))
             data.extend(txt_bytes)
@@ -244,6 +277,7 @@ class Display:
     def to_dict(self) -> dict:
         d = dataclasses.asdict(self)
         del d['is_broadcast']
+        del d['text_length']
         return d
 
     @classmethod
@@ -352,10 +386,17 @@ class Message:
         return cls(**kwargs)
 
     @classmethod
-    def parse(cls, msg: bytes) -> Tuple[Message, bytes]:
+    def parse(cls, msg: bytes, retain_text_length: bool = False) -> Tuple[Message, bytes]:
         """Parse incoming message data to create a :class:`Message` instance.
 
         Any remaining message data after parsing is returned along with the instance.
+
+        Arguments:
+            msg: The incoming message bytes to parse
+            retain_text_length: Value to pass to :meth:`Display.from_dmsg`
+
+        .. versionchanged:: 0.0.8
+            The `retain_text_length` argument was added.
         """
         if len(msg) < 6:
             raise MessageParseError('Invalid header length', msg)
@@ -380,7 +421,7 @@ class Message:
             obj.scontrol = msg
             return obj, remaining
         while len(msg):
-            disp, msg = Display.from_dmsg(obj.flags, msg)
+            disp, msg = Display.from_dmsg(obj.flags, msg, retain_text_length)
             obj.displays.append(disp)
         return obj, remaining
 
