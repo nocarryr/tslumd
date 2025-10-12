@@ -324,10 +324,10 @@ def test_invalid_dmsg_control(uhs500_msg_bytes, faker):
 
 
 @pytest.mark.benchmark(group='message-parse')
-def test_bench_message_parse(uhs500_msg_bytes, uhs500_msg_parsed):
-    parsed, remaining = Message.parse(uhs500_msg_bytes)
+def test_bench_message_parse(uhs500_msg_bytes, uhs500_msg_parsed_fixed_text_length):
+    parsed, remaining = Message.parse(uhs500_msg_bytes, retain_text_length=True)
     assert not len(remaining)
-    assert parsed == uhs500_msg_parsed
+    assert parsed == uhs500_msg_parsed_fixed_text_length
 
 
 @pytest.mark.benchmark(group='message-build')
