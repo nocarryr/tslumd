@@ -7,18 +7,46 @@ from tslumd.messages import (
     DmsgControlParseError, MessageParseError, MessageLengthError,
 )
 
-@pytest.fixture
-def message_with_lots_of_displays():
+
+def build_multi_display_message(num_displays: int) -> tuple[Message, list[int]]:
+    """Build a message with enough displays to require multiple packets
+    when built, returning the message object and a list of the lengths
+    of each packet.
+    """
     msgobj = Message()
-    # Message header byte length: 6
-    # Dmsg header byte length: 4
-    # Text length: 2(length bytes) + 9(chars) = 11
-    # Each Dmsg total: 4 + 11 = 15
-    # Dmsg's: 4096 * 15 = 61440
-    # 4096 Dmsg's with Message header: 4096 * 15 + 6 = 61446 bytes
-    for i in range(4096):
-        msgobj.displays.append(Display(index=i, text=f'Foo {i:05d}'))
-    return msgobj
+    msg_lengths = []
+    text_format = 'Foo {:05d}'
+    text_length = len(text_format.format(0))
+
+    # Initial message header length
+    cur_msg_length = 6
+
+    # Dmsg header + text length bytes + text bytes
+    dmsg_length = 4 + 2 + text_length
+
+    for i in range(num_displays):
+        msgobj.displays.append(Display(index=i, text=text_format.format(i)))
+        if cur_msg_length + dmsg_length > 2048:
+            msg_lengths.append(cur_msg_length)
+            cur_msg_length = 6 + dmsg_length
+        else:
+            cur_msg_length += dmsg_length
+    msg_lengths.append(cur_msg_length)
+    assert not any(l > 2048 for l in msg_lengths)
+    return msgobj, msg_lengths
+
+
+@pytest.fixture
+def message_with_multi_packet_displays() -> tuple[Message, list[int]]:
+    """Message with enough displays to require at least 6 packets
+    but not so many as to make the test take too long.
+    """
+    return build_multi_display_message(6 * 136 + 1)  # 6 full packets + 1 display
+
+
+@pytest.fixture
+def message_with_lots_of_displays() -> tuple[Message, list[int]]:
+    return build_multi_display_message(4096)
 
 
 def test_uhs_message(uhs500_msg_bytes, uhs500_msg_parsed):
@@ -60,7 +88,7 @@ def test_messages():
 
 
 def test_packet_length(faker, message_with_lots_of_displays):
-    msgobj = message_with_lots_of_displays
+    msgobj, msg_lengths = message_with_lots_of_displays
 
     # Make sure the 2048 byte limit is respected
     with pytest.raises(MessageLengthError):
@@ -73,8 +101,9 @@ def test_packet_length(faker, message_with_lots_of_displays):
 
     # Iterate over individual message packets and make sure we get all displays
     all_parsed_displays = []
-    for msg_bytes in msgobj.build_messages():
+    for i, msg_bytes in enumerate(msgobj.build_messages()):
         assert len(msg_bytes) <= 2048
+        assert len(msg_bytes) == msg_lengths[i]
         parsed, remaining = Message.parse(msg_bytes)
         assert not len(remaining)
         all_parsed_displays.extend(parsed.displays)
@@ -335,3 +364,12 @@ def test_bench_message_build(uhs500_msg_bytes, uhs500_msg_parsed_fixed_text_leng
     msg_bytes = uhs500_msg_parsed_fixed_text_length.build_message()
     assert len(msg_bytes) == len(uhs500_msg_bytes)
     assert msg_bytes == uhs500_msg_bytes
+
+
+@pytest.mark.benchmark(group='message-build-multi')
+def test_bench_message_build_multi(message_with_multi_packet_displays):
+    msgobj, msg_lengths = message_with_multi_packet_displays
+    assert len(msg_lengths) > 1
+    for i, msg_bytes in enumerate(msgobj.build_messages()):
+        msg_len = len(msg_bytes)
+        assert msg_len == msg_lengths[i]
