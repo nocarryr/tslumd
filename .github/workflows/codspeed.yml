@@ -1,0 +1,27 @@
+name: Codspeed Benchmarks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: 3.13
+    - name: Install Project
+      run: uv sync --frozen --group test --group doc
+    - name: Run benchmarks
+      uses: CodSpeedHQ/action@v4
+      with:
+        mode: instrumentation
+        run: uv run pytest tests/ --codspeed
