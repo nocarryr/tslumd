@@ -15,7 +15,7 @@ requires-python = ">=3.9"
 license = "MIT"
 keywords = ["tally", "tsl", "tslumd", "video", "broadcast"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 2 - Pre-Alpha",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
