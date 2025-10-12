@@ -52,11 +52,11 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-      # Note: We're exporting the lockfile without the project included.
+      # Note: We're exporting the lockfile without the project or its direct dependencies included.
       # Then we avoid using uv elsewhere to ensure we're testing the installed package
       # and not the development environment.
     - name: Export Lockfile
-      run: uv export --frozen --group test --group doc --no-emit-project --format requirements-txt -o requirements.txt
+      run: uv export --frozen --only-group test --only-group doc --format requirements-txt -o requirements.txt
     - name: Install dependencies
       run: pip install -r requirements.txt
 
