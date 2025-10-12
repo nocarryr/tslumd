@@ -91,3 +91,4 @@ ENV/
 venv*
 .venv*
 .pytest_cache/
+.codspeed/
