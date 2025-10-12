@@ -321,3 +321,10 @@ def test_invalid_dmsg_control(uhs500_msg_bytes, faker):
     bad_bytes = bytes(bad_bytes)
     with pytest.raises(DmsgControlParseError):
         r = Message.parse(bad_bytes)
+
+
+@pytest.mark.benchmark(group='message-parse')
+def test_bench_message_parse(uhs500_msg_bytes, uhs500_msg_parsed):
+    parsed, remaining = Message.parse(uhs500_msg_bytes)
+    assert not len(remaining)
+    assert parsed == uhs500_msg_parsed
