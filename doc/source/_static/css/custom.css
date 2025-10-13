@@ -2,3 +2,7 @@
     color: #404040;
     font-weight: normal;
 }
+
+dl.py.property {
+    display: block !important;
+}
