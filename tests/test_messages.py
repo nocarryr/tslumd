@@ -49,6 +49,41 @@ def message_with_lots_of_displays() -> tuple[Message, list[int]]:
     return build_multi_display_message(4096)
 
 
+@pytest.fixture(
+    params=[
+        'Hello, world! 😊',
+        'こんにちは世界',  # Japanese
+        'Привет, мир!',   # Russian
+        'مرحبا بالعالم',  # Arabic
+        '😊🌍🚀',         # Emojis
+    ]
+)
+def utf16_text(request) -> str:
+    return request.param
+
+
+@pytest.fixture
+def utf16_message(utf16_text):
+    """Construct message bytes containing a single display with non-ASCII text
+
+    Building manually to ensure proper isolation from the library code.
+    """
+    ver = 0
+    flags = 0x01    # bit 0 set for UTF-16
+    screen = 1
+    disp = 1
+    ctrl = 0        # no control
+    text_bytes = bytes(utf16_text, 'utf-16le')
+    packet = bytearray(
+        struct.pack('<BBHHHH', ver, flags, screen, disp, ctrl, len(text_bytes))
+    )
+    packet.extend(text_bytes)
+    pbc = len(packet)
+    packet = bytearray(struct.pack('<H', pbc)) + packet
+    return bytes(packet)
+
+
+
 def test_uhs_message(uhs500_msg_bytes, uhs500_msg_parsed):
     parsed, remaining = Message.parse(uhs500_msg_bytes)
     assert not len(remaining)
@@ -350,6 +385,38 @@ def test_invalid_dmsg_control(uhs500_msg_bytes, faker):
     bad_bytes = bytes(bad_bytes)
     with pytest.raises(DmsgControlParseError):
         r = Message.parse(bad_bytes)
+
+
+
+def test_utf16_text_parse(utf16_text, utf16_message):
+    msgobj, remaining = Message.parse(utf16_message)
+    assert not len(remaining)
+    assert msgobj.screen == 1
+    assert len(msgobj.displays) == 1
+
+    disp = msgobj.displays[0]
+    assert disp.index == 1
+    assert disp.text == utf16_text
+
+
+@pytest.mark.parametrize('auto_flags', [True, False])
+def test_utf16_text_build(utf16_text, utf16_message, auto_flags: bool):
+    msg_flags = Flags.NO_FLAGS if auto_flags else Flags.UTF16
+    msgobj = Message(version=0, screen=1, flags=msg_flags)
+    disp = Display(
+        index=1,
+        text=utf16_text,
+        brightness=0,
+    )
+    msgobj.displays.append(disp)
+
+    if auto_flags:
+        with pytest.warns(UnicodeWarning):
+            packet = msgobj.build_message()
+    else:
+        packet = msgobj.build_message()
+    assert len(packet) == len(utf16_message)
+    assert packet == utf16_message
 
 
 @pytest.mark.benchmark(group='message-parse')

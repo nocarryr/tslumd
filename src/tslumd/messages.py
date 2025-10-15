@@ -4,6 +4,7 @@ import dataclasses
 from dataclasses import dataclass, field
 import enum
 import struct
+import warnings
 from typing import Tuple, Iterator, Any, cast
 
 from tslumd import MessageType, TallyColor, Tally
@@ -60,7 +61,7 @@ class Flags(enum.IntFlag):
     """
     NO_FLAGS = 0 #: No flags set
     UTF16 = 1
-    """Indicates text formatted as ``UTF-16LE`` if set, otherwise ``UTF-8``"""
+    """Indicates the text fields contain non-ASCII characters encoded as UTF-16LE"""
 
     SCONTROL = 2
     """Indicates the message contains ``SCONTROL`` data if set, otherwise ``DMESG``
@@ -250,6 +251,17 @@ class Display:
         length = len(data)
         return struct.pack(f'<H{length}s', length, data)
 
+    def _requires_utf16(self) -> bool:
+        if self.type == MessageType.control:
+            return False
+        if not len(self.text):
+            return False
+        try:
+            self.text.encode('ascii')
+        except UnicodeEncodeError:
+            return True
+        return False
+
     def to_dmsg(self, flags: Flags) -> bytes:
         """Build ``dmsg`` bytes to be included in a message
         (called from :meth:`Message.build_message`)
@@ -266,7 +278,7 @@ class Display:
             if Flags.UTF16 in flags:
                 txt_bytes = bytes(self.text, 'UTF-16le')
             else:
-                txt_bytes = bytes(self.text, 'UTF-8')
+                txt_bytes = bytes(self.text, 'ascii')
             if self.text_length is not None:
                 txt_bytes = txt_bytes.ljust(self.text_length, b'\0')[:self.text_length]
             txt_byte_len = len(txt_bytes)
@@ -470,16 +482,24 @@ class Message:
         """
         msg_len_exceeded = False
         next_disp_index = None
+        flags = self.flags
         if self.type == MessageType.control:
             payload = bytearray(self.scontrol)
             byte_count = len(payload)
             if byte_count + 6 > 2048:
                 raise MessageLengthError()
         else:
+            if flags & Flags.UTF16 == 0 and self._requires_utf16():
+                warnings.warn(
+                    'Message contains UTF-16 text but UTF16 flag is not set. Setting it now.',
+                    UnicodeWarning,
+                    stacklevel=2,
+                )
+                flags |= Flags.UTF16
             byte_count = 0
             payload = bytearray()
             for disp_index, display in enumerate(self.displays):
-                disp_payload = display.to_dmsg(self.flags)
+                disp_payload = display.to_dmsg(flags)
                 disp_len = len(disp_payload)
                 if not ignore_packet_length:
                     if byte_count + disp_len + 6 >= 2048:
@@ -492,7 +512,7 @@ class Message:
                 payload.extend(disp_payload)
         fmt = f'<HBBH{byte_count}B'
         pbc = struct.calcsize(fmt) - 2
-        data = bytearray(struct.pack('<HBBH', pbc, self.version, self.flags, self.screen))
+        data = bytearray(struct.pack('<HBBH', pbc, self.version, flags, self.screen))
         data.extend(payload)
         yield bytes(data)
 
@@ -503,3 +523,8 @@ class Message:
             kw['displays'] = displays
             sub_msg = Message(**kw)
             yield from sub_msg.build_messages()
+
+    def _requires_utf16(self) -> bool:
+        if Flags.UTF16 in self.flags:
+            return True
+        return any(disp._requires_utf16() for disp in self.displays)
