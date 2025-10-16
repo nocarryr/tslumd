@@ -290,6 +290,7 @@ class Display:
         d = dataclasses.asdict(self)
         del d['is_broadcast']
         del d['text_length']
+        del d['_requires_utf16']
         return d
 
     @classmethod
