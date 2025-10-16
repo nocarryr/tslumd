@@ -68,11 +68,8 @@ class Flags(enum.IntFlag):
     """
 
 def text_is_ascii(s: str) -> bool:
-    try:
-        s.encode('ascii')
-    except UnicodeEncodeError:
-        return False
-    return True
+    ba = bytearray(s.encode())
+    return max(ba, default=0) < 128
 
 
 @dataclass(frozen=True)
