@@ -275,7 +275,8 @@ class Display:
             data = bytearray(struct.pack('<2H', self.index, ctrl))
             data.extend(self._pack_control_data(self.control))
         else:
-            if Flags.UTF16 in flags:
+            if self._requires_utf16:
+                # The UTF16 flag should be set in the message flags by now
                 txt_bytes = bytes(self.text, 'UTF-16le')
             else:
                 txt_bytes = bytes(self.text, 'ascii')
