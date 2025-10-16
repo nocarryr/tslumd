@@ -1,3 +1,4 @@
+import dataclasses
 import pytest
 import itertools
 import asyncio
@@ -23,17 +24,17 @@ def test_tally_display_conversion(faker):
         for tally_type, color in iter_tally_types_and_colors():
             brightness = faker.pyint(max_value=3)
             # print(f'{i=}, {tally_type=}, {color=}')
-            disp.brightness = brightness
+            disp = dataclasses.replace(disp, brightness=brightness)
             tally.brightness = brightness
             assert 0 <= tally.normalized_brightness <= 1
             assert tally.normalized_brightness == brightness / 3
             assert tally_type.name is not None
             setattr(tally, tally_type.name, color)
-            setattr(disp, tally_type.name, color)
+            disp = dataclasses.replace(disp, **{tally_type.name: color})
             for word in faker.words(3):
                 # print(f'{word=}')
                 tally.text = word
-                disp.text = word
+                disp = dataclasses.replace(disp, text=word)
 
                 assert disp == Tally.from_display(disp) == tally
                 assert disp == Display.from_tally(tally) == tally

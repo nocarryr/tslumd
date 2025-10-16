@@ -67,8 +67,15 @@ class Flags(enum.IntFlag):
     """Indicates the message contains ``SCONTROL`` data if set, otherwise ``DMESG``
     """
 
+def text_is_ascii(s: str) -> bool:
+    try:
+        s.encode('ascii')
+    except UnicodeEncodeError:
+        return False
+    return True
 
-@dataclass
+
+@dataclass(frozen=True)
 class Display:
     """A single tally "display"
     """
@@ -119,12 +126,16 @@ class Display:
     .. versionadded:: 0.0.8
     """
 
+    _requires_utf16: bool = field(init=False, repr=False, compare=False)
+
     def __post_init__(self):
-        self.is_broadcast = self.index == 0xffff
+        object.__setattr__(self, 'is_broadcast', self.index == 0xffff)
         if len(self.control):
-            self.type = MessageType.control
+            object.__setattr__(self, 'type', MessageType.control)
         if self.type == MessageType.control and len(self.text):
             raise ValueError('Control message cannot contain text')
+        is_utf16 = not text_is_ascii(self.text)
+        object.__setattr__(self, '_requires_utf16', is_utf16)
 
     @classmethod
     def broadcast(cls, **kwargs) -> Display:
@@ -250,17 +261,6 @@ class Display:
         """
         length = len(data)
         return struct.pack(f'<H{length}s', length, data)
-
-    def _requires_utf16(self) -> bool:
-        if self.type == MessageType.control:
-            return False
-        if not len(self.text):
-            return False
-        try:
-            self.text.encode('ascii')
-        except UnicodeEncodeError:
-            return True
-        return False
 
     def to_dmsg(self, flags: Flags) -> bytes:
         """Build ``dmsg`` bytes to be included in a message
@@ -527,4 +527,4 @@ class Message:
     def _requires_utf16(self) -> bool:
         if Flags.UTF16 in self.flags:
             return True
-        return any(disp._requires_utf16() for disp in self.displays)
+        return any(disp._requires_utf16 for disp in self.displays)
