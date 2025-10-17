@@ -204,7 +204,7 @@ class Display:
                 txt_length = len(txt_bytes)
                 if b'\0' in txt_bytes:
                     txt_bytes = txt_bytes.split(b'\0')[0]
-                txt = txt_bytes.decode('UTF-8')
+                txt = txt_bytes.decode('ascii')
                 if retain_text_length:
                     kw['text_length'] = txt_length
                 else:
