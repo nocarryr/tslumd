@@ -288,11 +288,16 @@ class Display:
         return data
 
     def to_dict(self) -> dict:
-        d = dataclasses.asdict(self)
-        del d['is_broadcast']
-        del d['text_length']
-        del d['_requires_utf16']
-        return d
+        return {
+            'index': self.index,
+            'rh_tally': self.rh_tally,
+            'txt_tally': self.txt_tally,
+            'lh_tally': self.lh_tally,
+            'brightness': self.brightness,
+            'text': self.text,
+            'control': self.control,
+            'type': self.type,
+        }
 
     @classmethod
     def from_tally(cls, tally: Tally, msg_type: MessageType = MessageType.display) -> Display:
