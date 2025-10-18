@@ -2,6 +2,7 @@ import struct
 import pytest
 
 from tslumd import TallyColor, Message, Display, MessageType
+from tslumd.tallyobj import Tally, Screen
 from tslumd.messages import (
     Flags, ParseError, DmsgParseError,
     DmsgControlParseError, MessageParseError, MessageLengthError,
@@ -399,6 +400,22 @@ def test_utf16_text_parse(utf16_text, utf16_message):
     assert disp.text == utf16_text
 
 
+def test_utf16_text_parse_to_tally(utf16_text, utf16_message):
+    msgobj, remaining = Message.parse(utf16_message)
+    assert not len(remaining)
+    assert msgobj.screen == 1
+    assert len(msgobj.displays) == 1
+
+    screen = Screen(index_=msgobj.screen)
+    screen.update_from_message(msgobj)
+    assert len(screen.tallies) == len(msgobj.displays)
+    disp = msgobj.displays[0]
+    tally = screen[disp.index]
+
+    assert disp.index == tally.index
+    assert disp.text == tally.text == utf16_text
+
+
 @pytest.mark.parametrize('auto_flags', [True, False])
 def test_utf16_text_build(utf16_text, utf16_message, auto_flags: bool):
     msg_flags = Flags.NO_FLAGS if auto_flags else Flags.UTF16
@@ -408,6 +425,29 @@ def test_utf16_text_build(utf16_text, utf16_message, auto_flags: bool):
         text=utf16_text,
         brightness=0,
     )
+    msgobj.displays.append(disp)
+
+    if auto_flags:
+        with pytest.warns(UnicodeWarning):
+            packet = msgobj.build_message()
+    else:
+        packet = msgobj.build_message()
+    assert len(packet) == len(utf16_message)
+    assert packet == utf16_message
+
+
+@pytest.mark.parametrize('auto_flags', [True, False])
+def test_utf16_text_build_from_tally(utf16_text, utf16_message, auto_flags: bool):
+    screen = Screen(index_=1)
+    tally = screen.add_tally(
+        index_=1,
+        text=utf16_text,
+        brightness=0,
+    )
+
+    msg_flags = Flags.NO_FLAGS if auto_flags else Flags.UTF16
+    msgobj = Message(version=0, screen=1, flags=msg_flags)
+    disp = Display.from_tally(tally)
     msgobj.displays.append(disp)
 
     if auto_flags:
