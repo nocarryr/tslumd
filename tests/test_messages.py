@@ -53,10 +53,10 @@ def message_with_lots_of_displays() -> tuple[Message, list[int]]:
 @pytest.fixture(
     params=[
         'Hello, world! 😊',
-        'こんにちは世界',  # Japanese
-        'Привет, мир!',   # Russian
-        'مرحبا بالعالم',  # Arabic
-        '😊🌍🚀',         # Emojis
+        'こんにちは世界',
+        'Привет, мир!',
+        'مرحبا بالعالم',
+        '😊🌍🚀',
     ]
 )
 def utf16_text(request) -> str:
