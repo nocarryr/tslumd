@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import pytest
 import pytest_asyncio
 
@@ -82,7 +83,7 @@ async def test_with_uhs_data(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, 
         # Then wait for ``on_tally_updated`` events
         receiver.unbind(evt_listener)
         receiver.bind_async(loop, on_tally_updated=evt_listener.callback)
-        for disp in uhs500_msg_parsed.displays:
+        for i, disp in enumerate(uhs500_msg_parsed.displays):
             tally = screen.tallies[disp.index]
 
             for tally_type in TallyType.all():
@@ -93,9 +94,9 @@ async def test_with_uhs_data(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, 
                     new_value = TallyColor.GREEN
                 else:
                     new_value = TallyColor.RED
-                setattr(disp, attr, new_value)
-            disp.text = f'{disp.text}-foo'
-            disp.brightness = 1
+                disp = dataclasses.replace(disp, **{attr: new_value})
+            disp = dataclasses.replace(disp, text=f'{disp.text}-foo', brightness=1)
+            uhs500_msg_parsed.displays[i] = disp
 
             transport.sendto(uhs500_msg_parsed.build_message(), ('127.0.0.1', udp_port))
 
@@ -201,7 +202,8 @@ async def test_rebind(
         assert receiver.hostaddr == host_addrs[1]
 
         disp = uhs500_msg_parsed.displays[0]
-        disp.brightness = 1
+        disp = dataclasses.replace(disp, brightness=1)
+        uhs500_msg_parsed.displays[0] = disp
 
         transport.sendto(uhs500_msg_parsed.build_message(), (host_addrs[1], udp_port))
 
@@ -216,7 +218,8 @@ async def test_rebind(
         await receiver.set_hostport(new_port)
         assert receiver.hostport == new_port
 
-        disp.brightness = 2
+        disp = dataclasses.replace(disp, brightness=2)
+        uhs500_msg_parsed.displays[0] = disp
         transport.sendto(uhs500_msg_parsed.build_message(), (host_addrs[1], new_port))
 
         evt_args, evt_kwargs = await evt_listener.get()
@@ -289,7 +292,8 @@ async def test_parse_errors(faker, udp_endpoint, udp_port):
 
             transport.sendto(bad_bytes, ('127.0.0.1', udp_port))
 
-            disp.text = f'foo_{i}'
+            disp = dataclasses.replace(disp, text=f'foo_{i}')
+            msgobj = Message(screen=msgobj.screen, displays=[disp])
             transport.sendto(msgobj.build_message(), ('127.0.0.1', udp_port))
 
             _ = await evt_listener.get()
