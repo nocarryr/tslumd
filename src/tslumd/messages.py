@@ -262,7 +262,7 @@ class Display:
         length = len(data)
         return struct.pack(f'<H{length}s', length, data)
 
-    def to_dmsg(self, flags: Flags) -> bytes:
+    def to_dmsg(self) -> bytes:
         """Build ``dmsg`` bytes to be included in a message
         (called from :meth:`Message.build_message`)
         """
@@ -276,7 +276,6 @@ class Display:
             data.extend(self._pack_control_data(self.control))
         else:
             if self._requires_utf16:
-                # The UTF16 flag should be set in the message flags by now
                 txt_bytes = bytes(self.text, 'UTF-16le')
             else:
                 txt_bytes = bytes(self.text, 'ascii')
@@ -506,7 +505,7 @@ class Message:
             byte_count = 0
             payload = bytearray()
             for disp_index, display in enumerate(self.displays):
-                disp_payload = display.to_dmsg(flags)
+                disp_payload = display.to_dmsg()
                 disp_len = len(disp_payload)
                 if not ignore_packet_length:
                     if byte_count + disp_len + 6 >= 2048:

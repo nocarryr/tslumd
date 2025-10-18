@@ -209,7 +209,7 @@ def test_broadcast_display(uhs500_msg_parsed, faker):
             disp = Display(index=ix, **kw)
             assert not disp.is_broadcast
 
-            parsed, remaining = Display.from_dmsg(msgobj.flags, disp.to_dmsg(msgobj.flags))
+            parsed, remaining = Display.from_dmsg(msgobj.flags, disp.to_dmsg())
             assert not parsed.is_broadcast
             assert parsed == disp
 
@@ -220,10 +220,10 @@ def test_broadcast_display(uhs500_msg_parsed, faker):
         assert bc_disp1.is_broadcast
         assert bc_disp2.is_broadcast
 
-        parsed1, remaining = Display.from_dmsg(msgobj.flags, bc_disp1.to_dmsg(msgobj.flags))
+        parsed1, remaining = Display.from_dmsg(msgobj.flags, bc_disp1.to_dmsg())
         assert parsed1.is_broadcast
 
-        parsed2, remaining = Display.from_dmsg(msgobj.flags, bc_disp2.to_dmsg(msgobj.flags))
+        parsed2, remaining = Display.from_dmsg(msgobj.flags, bc_disp2.to_dmsg())
         assert parsed2.is_broadcast
 
         assert bc_disp1 == bc_disp2 == parsed1 == parsed2
@@ -284,7 +284,7 @@ def test_dmsg_control(uhs500_msg_parsed, faker):
 
             assert disp.type == MessageType.control
 
-            disp_bytes = disp.to_dmsg(msgobj.flags)
+            disp_bytes = disp.to_dmsg()
             parsed_disp, remaining = Display.from_dmsg(msgobj.flags, disp_bytes)
 
             assert not len(remaining)
