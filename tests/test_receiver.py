@@ -83,7 +83,7 @@ async def test_with_uhs_data(uhs500_msg_bytes, uhs500_msg_parsed, udp_endpoint, 
         # Then wait for ``on_tally_updated`` events
         receiver.unbind(evt_listener)
         receiver.bind_async(loop, on_tally_updated=evt_listener.callback)
-        for i, disp in enumerate(uhs500_msg_parsed.displays.copy()):
+        for i, disp in enumerate(uhs500_msg_parsed.displays):
             tally = screen.tallies[disp.index]
 
             for tally_type in TallyType.all():
