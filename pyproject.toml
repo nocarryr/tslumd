@@ -29,7 +29,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "python-dispatch>=0.2.2",
+    "python-dispatch>=0.2.3",
     "importlib-metadata; python_version < '3.8'",
 ]
 
