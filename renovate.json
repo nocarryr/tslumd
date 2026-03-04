@@ -3,6 +3,13 @@
   "extends": [
     "config:recommended"
   ],
+  "packageRules": [
+    {
+      "matchFileNames": [".github/workflows/codspeed.yml"],
+      "matchPackageNames": ["actions/python-versions"],
+      "allowedVersions": "3.13"
+    }
+  ],
   "lockFileMaintenance": {
     "enabled": true
   }
