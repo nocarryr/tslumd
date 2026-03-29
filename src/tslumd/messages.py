@@ -194,8 +194,8 @@ class Display:
         )
         is_control_data = ctrl & 0x8000 == 0x8000
         if is_control_data:
-            ctrl, dmsg = cls._unpack_control_data(dmsg)
-            kw['control'] = ctrl
+            ctrl_data, dmsg = cls._unpack_control_data(dmsg)
+            kw['control'] = ctrl_data
             kw['type'] = MessageType.control
         else:
             if len(dmsg) < 2:
