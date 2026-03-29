@@ -1,5 +1,6 @@
 # from loguru import logger
 import pytest
+import pytest_asyncio
 import asyncio
 import socket
 
@@ -11,17 +12,14 @@ def non_loopback_hostaddr():
     return addrs[0]
 
 
-@pytest.fixture(scope='function')
-def new_loop(request, doctest_namespace):
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    policy.set_event_loop(loop)
+@pytest_asyncio.fixture(loop_scope="function")
+async def current_loop(doctest_namespace):
+    loop = asyncio.get_event_loop()
     doctest_namespace['loop'] = loop
-    yield loop
-    loop.close()
-    policy.set_event_loop(None)
+    return loop
 
-def receiver_setup(request, loop, hostaddr):
+
+def receiver_setup(request, current_loop, hostaddr):
     cleanup_coro = None
     from tslumd import UmdSender, TallyType, TallyColor
 
@@ -43,24 +41,22 @@ def receiver_setup(request, loop, hostaddr):
             sender.set_tally_color((screen_index, i), TallyType.rh_tally, color)
         return sender
 
-    sender_task = loop.run_until_complete(open_sender())
+    sender_task = current_loop.run_until_complete(open_sender())
 
     async def cleanup():
         await sender_task
         await sender.close()
 
     yield
-    loop.run_until_complete(cleanup())
-    if not loop.is_closed():
-        loop.close()
-    asyncio.set_event_loop_policy(None)
+    current_loop.run_until_complete(cleanup())
+
 
 @pytest.fixture(scope="function", autouse=True)
-def doctest_stuff(request, new_loop, non_loopback_hostaddr):
+def doctest_stuff(request, current_loop, non_loopback_hostaddr):
     node_name = request.node.name
     loop = asyncio.get_event_loop()
-    assert loop is new_loop
+    assert loop is current_loop
     if node_name == 'receiver.rst':
-        yield from receiver_setup(request, new_loop, non_loopback_hostaddr)
+        yield from receiver_setup(request, current_loop, non_loopback_hostaddr)
     else:
         yield
