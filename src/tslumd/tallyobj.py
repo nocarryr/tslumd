@@ -13,7 +13,7 @@ else:
 
 from pydispatch import Dispatcher, Property
 
-from tslumd import MessageType, TallyType, TallyColor, TallyKey
+from . import MessageType, TallyType, TallyColor, TallyKey, DisplayTallyCommonDict
 if TYPE_CHECKING:
     from .messages import Display, Message
 
@@ -146,17 +146,15 @@ class Tally(Dispatcher):
         return cls(0xffff, **kwargs)
 
     @classmethod
-    def from_display(cls, display: Display, **kwargs) -> Tally:
+    def from_display(cls, display: Display, screen: Screen|None = None) -> Tally:
         """Create an instance from the given :class:`~.messages.Display` object
         """
-        attrs = set(cls._prop_attrs)
-        if display.type.name == 'control':
-            attrs.discard('text')
+        d = display.to_common_dict()
+        if display.type == MessageType.control:
+            d.pop('text', None)
         else:
-            attrs.discard('control')
-        kw = kwargs.copy()
-        kw.update({attr:getattr(display, attr) for attr in cls._prop_attrs})
-        return cls(display.index, **kw)
+            d.pop('control', None)
+        return cls(screen=screen, **d)
 
     def set_color(self, tally_type: StrOrTallyType, color: StrOrTallyColor):
         """Set the color property (or properties) for the given TallyType
@@ -346,11 +344,21 @@ class Tally(Dispatcher):
             control=self.control,
         )
 
-    # def to_display(self) -> 'tslumd.messages.Display':
-    #     """Create a :class:`~.messages.Display` from this instance
-    #     """
-    #     kw = self.to_dict()
-    #     return Display(**kw)
+    def to_common_dict(self) -> DisplayTallyCommonDict:
+        """Return a dict of the common fields between :class:`Tally` and
+        :class:`~.Display` objects
+
+        .. versionadded:: 0.0.8
+        """
+        return DisplayTallyCommonDict(
+            index=self.index,
+            rh_tally=self.rh_tally,
+            txt_tally=self.txt_tally,
+            lh_tally=self.lh_tally,
+            brightness=self.brightness,
+            text=self.text,
+            control=self.control,
+        )
 
     def _on_prop_changed(self, instance, value, **kwargs):
         if self._updating_props:
