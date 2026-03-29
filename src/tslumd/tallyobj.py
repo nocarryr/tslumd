@@ -536,7 +536,7 @@ class Screen(Dispatcher):
     def update_from_message(self, msg: Message):
         """Handle an incoming :class:`~.Message`
         """
-        if msg.screen != self.index and not msg.broadcast:
+        if msg.screen != self.index and not msg.is_broadcast:
             return
         if msg.type == MessageType.control:
             self.scontrol = msg.scontrol
