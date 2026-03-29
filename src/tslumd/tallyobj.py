@@ -5,6 +5,11 @@ except ImportError:             # pragma: no cover
     import logging
     logger = logging.getLogger(__name__)
 from typing import Union, Tuple, TypedDict, Iterator, cast, TYPE_CHECKING
+import sys
+if sys.version_info >= (3, 11):
+    from typing import Unpack
+else:
+    from typing_extensions import Unpack
 
 from pydispatch import Dispatcher, Property
 
@@ -60,6 +65,21 @@ class Tally(Dispatcher):
     _events_ = ['on_update', 'on_control']
     _prop_attrs = ('rh_tally', 'txt_tally', 'lh_tally', 'brightness', 'text', 'control')
 
+    class InitKwargs(TypedDict, total=False):
+        """Keyword arguments for initializing a :class:`Tally` instance"""
+        screen: Screen|None
+        rh_tally: TallyColor
+        txt_tally: TallyColor
+        lh_tally: TallyColor
+        brightness: int
+        text: str
+        control: bytes
+
+    class UpdateKwargs(InitKwargs, total=False):
+        """Keyword arguments for use in the :meth:`Tally.update` method"""
+        LOG_UPDATED: bool
+
+
     class SerializeTD(TypedDict):
         """Dictionary representation of a :class:`Tally` instance"""
         index: int
@@ -71,7 +91,7 @@ class Tally(Dispatcher):
         control: bytes
         id: TallyKey|None
 
-    def __init__(self, index: int, **kwargs):
+    def __init__(self, index: int, **kwargs: Unpack[InitKwargs]):
         self.screen = kwargs.get('screen')
         self.__index = index
         if self.screen is not None:
@@ -260,7 +280,7 @@ class Tally(Dispatcher):
             color = other[ttype]
             self.merge_color(ttype, color)
 
-    def update(self, **kwargs) -> set[str]:
+    def update(self, **kwargs: Unpack[UpdateKwargs]) -> set[str]:
         """Update any known properties from the given keyword-arguments
 
         Returns:
@@ -272,7 +292,8 @@ class Tally(Dispatcher):
         for attr in self._prop_attrs:
             if attr not in kwargs:
                 continue
-            val = kwargs[attr]
+            # The below should not be a type error since `attr` is already checked
+            val = kwargs[attr]  # type: ignore[reportTypedDictNotRequiredAccess]
             if attr == 'control' and val != b'':
                 if self.control == val:
                     # logger.debug(f'resetting control, {val=}, {self.control=}')
@@ -452,7 +473,7 @@ class Screen(Dispatcher):
         """
         return cls(0xffff, **kwargs)
 
-    def broadcast_tally(self, **kwargs) -> Tally:
+    def broadcast_tally(self, **kwargs: Unpack[Tally.InitKwargs]) -> Tally:
         """Create a temporary :class:`Tally` using :meth:`Tally.broadcast`
 
         Arguments:
@@ -463,9 +484,10 @@ class Screen(Dispatcher):
             propagation (:event:`on_tally_added`, :event:`on_tally_update`,
             :event:`on_tally_control`) is handled by the :class:`Screen`.
         """
-        return Tally.broadcast(screen=self, **kwargs)
+        kwargs['screen'] = self
+        return Tally.broadcast(**kwargs)
 
-    def add_tally(self, index_: int, **kwargs) -> Tally:
+    def add_tally(self, index_: int, **kwargs: Unpack[Tally.InitKwargs]) -> Tally:
         """Create a :class:`Tally` object and add it to :attr:`tallies`
 
         Arguments:
@@ -477,7 +499,8 @@ class Screen(Dispatcher):
         """
         if index_ in self:
             raise KeyError(f'Tally exists for index {index_}')
-        tally = Tally(index_, screen=self, **kwargs)
+        kwargs['screen'] = self
+        tally = Tally(index_, **kwargs)
         self._add_tally_obj(tally)
         return tally
 
