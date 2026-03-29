@@ -277,9 +277,9 @@ class Display:
         """Build ``dmsg`` bytes to be included in a message
         (called from :meth:`Message.build_message`)
         """
-        ctrl = self.rh_tally & 0b11
-        ctrl += (self.txt_tally & 0b11) << 2
-        ctrl += (self.lh_tally & 0b11) << 4
+        ctrl = self.rh_tally.value & 0b11
+        ctrl += (self.txt_tally.value & 0b11) << 2
+        ctrl += (self.lh_tally.value & 0b11) << 4
         ctrl += (self.brightness & 0b11) << 6
         if self.type == MessageType.control:
             ctrl |= 0x8000
