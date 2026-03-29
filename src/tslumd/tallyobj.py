@@ -4,11 +4,16 @@ try:
 except ImportError:             # pragma: no cover
     import logging
     logger = logging.getLogger(__name__)
-from typing import Union, Tuple, Iterator, cast, TYPE_CHECKING
+from typing import Union, Tuple, TypedDict, Iterator, cast, TYPE_CHECKING
+import sys
+if sys.version_info >= (3, 11):
+    from typing import Unpack
+else:
+    from typing_extensions import Unpack
 
 from pydispatch import Dispatcher, Property
 
-from tslumd import MessageType, TallyType, TallyColor, TallyKey
+from . import MessageType, TallyType, TallyColor, TallyKey, DisplayTallyCommonDict
 if TYPE_CHECKING:
     from .messages import Display, Message
 
@@ -59,9 +64,36 @@ class Tally(Dispatcher):
     control = cast(bytes, Property(b''))
     _events_ = ['on_update', 'on_control']
     _prop_attrs = ('rh_tally', 'txt_tally', 'lh_tally', 'brightness', 'text', 'control')
-    def __init__(self, index_: int, **kwargs):
+
+    class InitKwargs(TypedDict, total=False):
+        """Keyword arguments for initializing a :class:`Tally` instance"""
+        screen: Screen|None
+        rh_tally: TallyColor
+        txt_tally: TallyColor
+        lh_tally: TallyColor
+        brightness: int
+        text: str
+        control: bytes
+
+    class UpdateKwargs(InitKwargs, total=False):
+        """Keyword arguments for use in the :meth:`Tally.update` method"""
+        LOG_UPDATED: bool
+
+
+    class SerializeTD(TypedDict):
+        """Dictionary representation of a :class:`Tally` instance"""
+        index: int
+        rh_tally: TallyColor
+        txt_tally: TallyColor
+        lh_tally: TallyColor
+        brightness: int
+        text: str
+        control: bytes
+        id: TallyKey|None
+
+    def __init__(self, index: int, **kwargs: Unpack[InitKwargs]):
         self.screen = kwargs.get('screen')
-        self.__index = index_
+        self.__index = index
         if self.screen is not None:
             self.__id = (self.screen.index, self.__index)
         else:
@@ -114,17 +146,15 @@ class Tally(Dispatcher):
         return cls(0xffff, **kwargs)
 
     @classmethod
-    def from_display(cls, display: Display, **kwargs) -> Tally:
+    def from_display(cls, display: Display, screen: Screen|None = None) -> Tally:
         """Create an instance from the given :class:`~.messages.Display` object
         """
-        attrs = set(cls._prop_attrs)
-        if display.type.name == 'control':
-            attrs.discard('text')
+        d = display.to_common_dict()
+        if display.type == MessageType.control:
+            d.pop('text', None)
         else:
-            attrs.discard('control')
-        kw = kwargs.copy()
-        kw.update({attr:getattr(display, attr) for attr in cls._prop_attrs})
-        return cls(display.index, **kw)
+            d.pop('control', None)
+        return cls(screen=screen, **d)
 
     def set_color(self, tally_type: StrOrTallyType, color: StrOrTallyColor):
         """Set the color property (or properties) for the given TallyType
@@ -248,7 +278,7 @@ class Tally(Dispatcher):
             color = other[ttype]
             self.merge_color(ttype, color)
 
-    def update(self, **kwargs) -> set[str]:
+    def update(self, **kwargs: Unpack[UpdateKwargs]) -> set[str]:
         """Update any known properties from the given keyword-arguments
 
         Returns:
@@ -260,7 +290,8 @@ class Tally(Dispatcher):
         for attr in self._prop_attrs:
             if attr not in kwargs:
                 continue
-            val = kwargs[attr]
+            # The below should not be a type error since `attr` is already checked
+            val = kwargs[attr]  # type: ignore[reportTypedDictNotRequiredAccess]
             if attr == 'control' and val != b'':
                 if self.control == val:
                     # logger.debug(f'resetting control, {val=}, {self.control=}')
@@ -299,22 +330,35 @@ class Tally(Dispatcher):
         props_changed = self.update(**kw)
         return props_changed
 
-    def to_dict(self) -> dict:
-        """Serialize to a :class:`dict`
+    def to_dict(self) -> SerializeTD:
+        """Serialize to a :class:`~.Tally.SerializeTD`
         """
-        d = {attr:getattr(self, attr) for attr in self._prop_attrs}
-        d['index'] = self.index
-        if self.screen is None:
-            d['id'] = None
-        else:
-            d['id'] = self.id
-        return d
+        return Tally.SerializeTD(
+            index=self.index,
+            id=self.id if self.__id is not None else None,
+            rh_tally=self.rh_tally,
+            txt_tally=self.txt_tally,
+            lh_tally=self.lh_tally,
+            brightness=self.brightness,
+            text=self.text,
+            control=self.control,
+        )
 
-    # def to_display(self) -> 'tslumd.messages.Display':
-    #     """Create a :class:`~.messages.Display` from this instance
-    #     """
-    #     kw = self.to_dict()
-    #     return Display(**kw)
+    def to_common_dict(self) -> DisplayTallyCommonDict:
+        """Return a dict of the common fields between :class:`Tally` and
+        :class:`~.Display` objects
+
+        .. versionadded:: 0.0.8
+        """
+        return DisplayTallyCommonDict(
+            index=self.index,
+            rh_tally=self.rh_tally,
+            txt_tally=self.txt_tally,
+            lh_tally=self.lh_tally,
+            brightness=self.brightness,
+            text=self.text,
+            control=self.control,
+        )
 
     def _on_prop_changed(self, instance, value, **kwargs):
         if self._updating_props:
@@ -437,7 +481,7 @@ class Screen(Dispatcher):
         """
         return cls(0xffff, **kwargs)
 
-    def broadcast_tally(self, **kwargs) -> Tally:
+    def broadcast_tally(self, **kwargs: Unpack[Tally.InitKwargs]) -> Tally:
         """Create a temporary :class:`Tally` using :meth:`Tally.broadcast`
 
         Arguments:
@@ -448,9 +492,10 @@ class Screen(Dispatcher):
             propagation (:event:`on_tally_added`, :event:`on_tally_update`,
             :event:`on_tally_control`) is handled by the :class:`Screen`.
         """
-        return Tally.broadcast(screen=self, **kwargs)
+        kwargs['screen'] = self
+        return Tally.broadcast(**kwargs)
 
-    def add_tally(self, index_: int, **kwargs) -> Tally:
+    def add_tally(self, index_: int, **kwargs: Unpack[Tally.InitKwargs]) -> Tally:
         """Create a :class:`Tally` object and add it to :attr:`tallies`
 
         Arguments:
@@ -462,7 +507,8 @@ class Screen(Dispatcher):
         """
         if index_ in self:
             raise KeyError(f'Tally exists for index {index_}')
-        tally = Tally(index_, screen=self, **kwargs)
+        kwargs['screen'] = self
+        tally = Tally(index_, **kwargs)
         self._add_tally_obj(tally)
         return tally
 
@@ -490,7 +536,7 @@ class Screen(Dispatcher):
     def update_from_message(self, msg: Message):
         """Handle an incoming :class:`~.Message`
         """
-        if msg.screen != self.index and not msg.broadcast:
+        if msg.screen != self.index and not msg.is_broadcast:
             return
         if msg.type == MessageType.control:
             self.scontrol = msg.scontrol

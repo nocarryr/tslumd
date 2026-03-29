@@ -1,9 +1,16 @@
+from typing import TypedDict
 import dataclasses
 import pytest
 import itertools
 import asyncio
 
 from tslumd import Tally, TallyColor, TallyType, Display
+
+
+class TallyColorDict(TypedDict):
+    rh_tally: TallyColor
+    txt_tally: TallyColor
+    lh_tally: TallyColor
 
 
 def iter_tally_colors():
@@ -139,7 +146,11 @@ async def test_update_event(faker):
     _, props_changed = await listener.get()
     assert set(props_changed) == set(['text'])
 
-    d = dict(rh_tally=TallyColor.RED, txt_tally=TallyColor.GREEN, lh_tally=TallyColor.AMBER)
+    d = TallyColorDict(
+        rh_tally=TallyColor.RED,
+        txt_tally=TallyColor.GREEN,
+        lh_tally=TallyColor.AMBER,
+    )
     tally.update(**d)
 
     _, props_changed = await listener.get()

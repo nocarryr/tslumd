@@ -1,8 +1,11 @@
 from __future__ import annotations
 import enum
-from typing import Tuple, Iterator
+from typing import Tuple, Iterator, TypedDict
 
-__all__ = ('TallyColor', 'TallyType', 'TallyState', 'MessageType', 'TallyKey')
+__all__ = (
+    'TallyColor', 'TallyType', 'TallyState', 'MessageType', 'TallyKey',
+    'DisplayTallyCommonDict',
+)
 
 class TallyColor(enum.IntFlag):
     """Color enum for tally indicators
@@ -219,3 +222,24 @@ TallyKey = Tuple[int, int]
 :attr:`tally_index <.Tally.index>`) to uniquely identify a single :class:`.Tally`
 within its :class:`.Screen`
 """
+
+
+class DisplayTallyCommonDict(TypedDict):
+    """Common fields between :class:`Display` and :class:`~.Tally` objects
+
+    .. versionadded:: 0.0.8
+    """
+    index: int
+    """Index of the tally within its screen (0-based)"""
+    rh_tally: TallyColor
+    """Color of the right-hand tally indicator"""
+    txt_tally: TallyColor
+    """Color of the text tally indicator"""
+    lh_tally: TallyColor
+    """Color of the left-hand tally indicator"""
+    brightness: int
+    """Brightness of the tally"""
+    text: str
+    """Text associated with the tally"""
+    control: bytes
+    """Control data associated with the tally"""

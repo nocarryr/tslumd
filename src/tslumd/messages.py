@@ -5,9 +5,9 @@ from dataclasses import dataclass, field
 import enum
 import struct
 import warnings
-from typing import Tuple, Iterator, Any, cast
+from typing import Tuple, Iterator, TypedDict, Any, cast
 
-from tslumd import MessageType, TallyColor, Tally
+from . import MessageType, TallyColor, Tally, DisplayTallyCommonDict
 
 __all__ = (
     'Display', 'Message', 'ParseError', 'MessageParseError',
@@ -128,6 +128,17 @@ class Display:
 
     _requires_utf16: bool = field(init=False, repr=False, compare=False)
 
+    class SerializeTD(TypedDict):
+        """Dictionary representation of a :class:`Display` instance"""
+        index: int
+        rh_tally: TallyColor
+        txt_tally: TallyColor
+        lh_tally: TallyColor
+        brightness: int
+        text: str
+        control: bytes
+        type: MessageType
+
     def __post_init__(self):
         object.__setattr__(self, 'is_broadcast', self.index == 0xffff)
         if len(self.control):
@@ -183,8 +194,8 @@ class Display:
         )
         is_control_data = ctrl & 0x8000 == 0x8000
         if is_control_data:
-            ctrl, dmsg = cls._unpack_control_data(dmsg)
-            kw['control'] = ctrl
+            ctrl_data, dmsg = cls._unpack_control_data(dmsg)
+            kw['control'] = ctrl_data
             kw['type'] = MessageType.control
         else:
             if len(dmsg) < 2:
@@ -266,9 +277,9 @@ class Display:
         """Build ``dmsg`` bytes to be included in a message
         (called from :meth:`Message.build_message`)
         """
-        ctrl = self.rh_tally & 0b11
-        ctrl += (self.txt_tally & 0b11) << 2
-        ctrl += (self.lh_tally & 0b11) << 4
+        ctrl = self.rh_tally.value & 0b11
+        ctrl += (self.txt_tally.value & 0b11) << 2
+        ctrl += (self.lh_tally.value & 0b11) << 4
         ctrl += (self.brightness & 0b11) << 6
         if self.type == MessageType.control:
             ctrl |= 0x8000
@@ -286,17 +297,33 @@ class Display:
             data.extend(txt_bytes)
         return data
 
-    def to_dict(self) -> dict:
-        return {
-            'index': self.index,
-            'rh_tally': self.rh_tally,
-            'txt_tally': self.txt_tally,
-            'lh_tally': self.lh_tally,
-            'brightness': self.brightness,
-            'text': self.text,
-            'control': self.control,
-            'type': self.type,
-        }
+    def to_dict(self) -> SerializeTD:
+        return Display.SerializeTD(
+            index=self.index,
+            rh_tally=self.rh_tally,
+            txt_tally=self.txt_tally,
+            lh_tally=self.lh_tally,
+            brightness=self.brightness,
+            text=self.text,
+            control=self.control,
+            type=self.type,
+        )
+
+    def to_common_dict(self) -> DisplayTallyCommonDict:
+        """Return a dict of the common fields between :class:`Display` and
+        :class:`~.Tally` objects
+
+        .. versionadded:: 0.0.8
+        """
+        return DisplayTallyCommonDict(
+            index=self.index,
+            rh_tally=self.rh_tally,
+            txt_tally=self.txt_tally,
+            lh_tally=self.lh_tally,
+            brightness=self.brightness,
+            text=self.text,
+            control=self.control,
+        )
 
     @classmethod
     def from_tally(cls, tally: Tally, msg_type: MessageType = MessageType.display) -> Display:
@@ -305,33 +332,24 @@ class Display:
         .. versionadded:: 0.0.2
             The msg_type argument
         """
-        kw = tally.to_dict()
-        del kw['id']
-        if msg_type == MessageType.control:
-            del kw['text']
-        elif msg_type == MessageType.display:
-            del kw['control']
-        kw['type'] = msg_type
-        return cls(**kw)
+        tally_kw = tally.to_common_dict()
+        if msg_type != MessageType.display:
+            tally_kw['text'] = ''
+        if msg_type != MessageType.control:
+            tally_kw['control'] = b''
+        return cls(type=msg_type, **tally_kw)
 
     def __eq__(self, other):
         if not isinstance(other, (Display, Tally)):
             return NotImplemented
-        self_dict = self.to_dict()
-        oth_dict = other.to_dict()
-        if isinstance(other, Display):
-            return self_dict == oth_dict
-        else:
-            del oth_dict['id']
-
-        del self_dict['type']
+        if isinstance(other, Display) and self.type != other.type:
+            return False
+        self_dict = self.to_common_dict()
+        oth_dict = other.to_common_dict()
         if self.type == MessageType.control:
-            del self_dict['text']
-            del oth_dict['text']
+            self_dict['text'] = oth_dict['text'] = ''
         else:
-            del self_dict['control']
-            del oth_dict['control']
-
+            self_dict['control'] = oth_dict['control'] = b''
         return self_dict == oth_dict
 
     def __ne__(self, other):
