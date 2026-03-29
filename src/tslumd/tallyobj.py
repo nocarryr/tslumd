@@ -4,7 +4,7 @@ try:
 except ImportError:             # pragma: no cover
     import logging
     logger = logging.getLogger(__name__)
-from typing import Union, Tuple, Iterator, cast, TYPE_CHECKING
+from typing import Union, Tuple, TypedDict, Iterator, cast, TYPE_CHECKING
 
 from pydispatch import Dispatcher, Property
 
@@ -59,9 +59,21 @@ class Tally(Dispatcher):
     control = cast(bytes, Property(b''))
     _events_ = ['on_update', 'on_control']
     _prop_attrs = ('rh_tally', 'txt_tally', 'lh_tally', 'brightness', 'text', 'control')
-    def __init__(self, index_: int, **kwargs):
+
+    class SerializeTD(TypedDict):
+        """Dictionary representation of a :class:`Tally` instance"""
+        index: int
+        rh_tally: TallyColor
+        txt_tally: TallyColor
+        lh_tally: TallyColor
+        brightness: int
+        text: str
+        control: bytes
+        id: TallyKey|None
+
+    def __init__(self, index: int, **kwargs):
         self.screen = kwargs.get('screen')
-        self.__index = index_
+        self.__index = index
         if self.screen is not None:
             self.__id = (self.screen.index, self.__index)
         else:
@@ -299,16 +311,19 @@ class Tally(Dispatcher):
         props_changed = self.update(**kw)
         return props_changed
 
-    def to_dict(self) -> dict:
-        """Serialize to a :class:`dict`
+    def to_dict(self) -> SerializeTD:
+        """Serialize to a :class:`~.Tally.SerializeTD`
         """
-        d = {attr:getattr(self, attr) for attr in self._prop_attrs}
-        d['index'] = self.index
-        if self.screen is None:
-            d['id'] = None
-        else:
-            d['id'] = self.id
-        return d
+        return Tally.SerializeTD(
+            index=self.index,
+            id=self.id if self.__id is not None else None,
+            rh_tally=self.rh_tally,
+            txt_tally=self.txt_tally,
+            lh_tally=self.lh_tally,
+            brightness=self.brightness,
+            text=self.text,
+            control=self.control,
+        )
 
     # def to_display(self) -> 'tslumd.messages.Display':
     #     """Create a :class:`~.messages.Display` from this instance

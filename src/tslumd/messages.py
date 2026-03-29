@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 import enum
 import struct
 import warnings
-from typing import Tuple, Iterator, Any, cast
+from typing import Tuple, Iterator, TypedDict, Any, cast
 
 from tslumd import MessageType, TallyColor, Tally
 
@@ -127,6 +127,17 @@ class Display:
     """
 
     _requires_utf16: bool = field(init=False, repr=False, compare=False)
+
+    class SerializeTD(TypedDict):
+        """Dictionary representation of a :class:`Display` instance"""
+        index: int
+        rh_tally: TallyColor
+        txt_tally: TallyColor
+        lh_tally: TallyColor
+        brightness: int
+        text: str
+        control: bytes
+        type: MessageType
 
     def __post_init__(self):
         object.__setattr__(self, 'is_broadcast', self.index == 0xffff)
@@ -286,17 +297,17 @@ class Display:
             data.extend(txt_bytes)
         return data
 
-    def to_dict(self) -> dict:
-        return {
-            'index': self.index,
-            'rh_tally': self.rh_tally,
-            'txt_tally': self.txt_tally,
-            'lh_tally': self.lh_tally,
-            'brightness': self.brightness,
-            'text': self.text,
-            'control': self.control,
-            'type': self.type,
-        }
+    def to_dict(self) -> SerializeTD:
+        return Display.SerializeTD(
+            index=self.index,
+            rh_tally=self.rh_tally,
+            txt_tally=self.txt_tally,
+            lh_tally=self.lh_tally,
+            brightness=self.brightness,
+            text=self.text,
+            control=self.control,
+            type=self.type,
+        )
 
     @classmethod
     def from_tally(cls, tally: Tally, msg_type: MessageType = MessageType.display) -> Display:
