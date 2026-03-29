@@ -3,6 +3,7 @@
   "extends": [
     "config:recommended"
   ],
+  "labels": ["dependencies"],
   "packageRules": [
     {
       "matchFileNames": [".github/workflows/codspeed.yml"],
