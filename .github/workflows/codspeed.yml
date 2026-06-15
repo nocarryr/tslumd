@@ -21,7 +21,7 @@ jobs:
     - name: Install Project
       run: uv sync --frozen --group test --group doc
     - name: Run benchmarks
-      uses: CodSpeedHQ/action@9d332c4d90b43981c3e55ae8e38e68709996240f # v4
+      uses: CodSpeedHQ/action@c145068895e045cc725ee76fcd2307624b65c3af # v4
       with:
         mode: simulation
         run: uv run pytest tests/ --codspeed
