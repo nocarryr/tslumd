@@ -1,12 +1,27 @@
 tslumd
 ======
 
-.. image:: https://badge.fury.io/py/tslumd.svg
-    :target: https://badge.fury.io/py/tslumd
-.. image:: https://img.shields.io/github/workflow/status/nocarryr/tslumd/Python%20package
+.. image:: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json
+    :target: https://docs.astral.sh/uv/
+    :alt: uv
+.. image:: https://img.shields.io/github/actions/workflow/status/nocarryr/tslumd/python-package.yml
     :alt: GitHub Workflow Status
-.. image:: https://img.shields.io/coveralls/github/nocarryr/tslumd
-    :alt: Coveralls
+    :target: https://github.com/nocarryr/tslumd/actions
+.. image:: https://img.shields.io/endpoint?url=https://codspeed.io/badge.json
+    :target: https://codspeed.io/nocarryr/tslumd
+    :alt: CodSpeed
+.. image:: https://img.shields.io/pypi/v/tslumd.svg
+    :target: https://pypi.org/project/tslumd/
+    :alt: PyPI version
+.. image:: https://img.shields.io/pypi/l/tslumd.svg
+    :target: https://pypi.org/project/tslumd/
+    :alt: PyPI license
+.. image:: https://img.shields.io/pypi/pyversions/tslumd.svg
+    :target: https://pypi.org/project/tslumd/
+    :alt: PyPI Python versions
+.. image:: https://img.shields.io/pypi/dw/tslumd.svg
+    :target: https://pypi.org/project/tslumd/
+    :alt: PyPI download week
 
 Client and Server for TSLUMD Tally Protocols
 
