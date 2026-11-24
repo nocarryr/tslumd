@@ -22,6 +22,35 @@ class EventListener:
         await self.results.put((args, kwargs))
 
 
+@pytest.mark.timeout(5)
+def test_parse_concatenated_messages():
+    receiver = UmdReceiver()
+    messages = [
+        Message(screen=1, displays=[Display(index=0, text='first')]),
+        Message(screen=2, displays=[Display(index=0, text='second')]),
+        Message(screen=1, displays=[Display(index=0, text='updated')]),
+    ]
+
+    receiver.parse_incoming(
+        b''.join(message.build_message() for message in messages),
+        ('127.0.0.1', 1234),
+    )
+
+    assert receiver.tallies[(1, 0)].text == 'updated'
+    assert receiver.tallies[(2, 0)].text == 'second'
+
+
+@pytest.mark.timeout(5)
+def test_parse_message_with_invalid_remainder():
+    receiver = UmdReceiver()
+    message = Message(screen=1, displays=[Display(index=0, text='first')])
+
+    with pytest.raises(ParseError):
+        receiver.parse_incoming(message.build_message() + b'\x00', ('127.0.0.1', 1234))
+
+    assert receiver.tallies[(1, 0)].text == 'first'
+
+
 @pytest_asyncio.fixture
 async def udp_endpoint(udp_port0):
     class Protocol(asyncio.DatagramProtocol):
