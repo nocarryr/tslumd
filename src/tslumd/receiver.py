@@ -219,6 +219,7 @@ class UmdReceiver(Dispatcher):
                 screen.update_from_message(message)
             if not len(remaining):
                 break
+            data = remaining
 
     def _bind_screen(self, screen: Screen):
         screen.bind(
